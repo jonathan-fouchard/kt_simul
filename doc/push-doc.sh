@@ -18,3 +18,4 @@ rm -fr build/
 touch .nojekyll
 git add .
 git ci -am "Generated gh-pages for `git log master -1 --pretty=short --abbrev-commit`" && git push upstream gh-pages && git checkout master
+cd ../

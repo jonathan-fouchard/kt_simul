@@ -81,30 +81,25 @@
 </table>
 <dl class="method">
 <dt id="kt_simul.io.simuio.SimuIO.save">
-<tt class="descname">save</tt><big>(</big><em>simufname='results.zip'</em>, <em>verbose=False</em><big>)</big><a class="reference internal" href="../_modules/kt_simul/io/simuio.html#SimuIO.save"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#kt_simul.io.simuio.SimuIO.save" title="Permalink to this definition">¶</a></dt>
-<dd><p>Saves the results of the simulation in two files
-with the parameters, measures and observations in one file
-and the trajectories in the other.</p>
+<tt class="descname">save</tt><big>(</big><em>simufname</em>, <em>metadata=None</em>, <em>verbose=False</em><big>)</big><a class="reference internal" href="../_modules/kt_simul/io/simuio.html#SimuIO.save"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#kt_simul.io.simuio.SimuIO.save" title="Permalink to this definition">¶</a></dt>
+<dd><p>Save <a class="reference internal" href="kt_simul.core.simul_spindle.html#kt_simul.core.simul_spindle.Metaphase" title="kt_simul.core.simul_spindle.Metaphase"><tt class="xref py py-class docutils literal"><span class="pre">Metaphase</span></tt></a> instance to
+HDF5 file. Each of the following element will be stored via
+<tt class="xref py py-class docutils literal"><span class="pre">pandas.DataFrame</span></tt> or <tt class="xref py py-class docutils literal"><span class="pre">pandas.Series</span></tt> object.</p>
 <table class="docutils field-list" frame="void" rules="none">
 <col class="field-name" />
 <col class="field-body" />
 <tbody valign="top">
-<tr class="field-odd field"><th class="field-name">Parameters :</th><td class="field-body"><p class="first"><strong>simufname</strong> : string</p>
+<tr class="field-odd field"><th class="field-name">Parameters :</th><td class="field-body"><p class="first"><strong>simufname</strong> : str</p>
+<blockquote>
+<div><p>Filename to save HDF5 file.</p>
+</div></blockquote>
+<p><strong>metadata</strong> : dict</p>
+<blockquote>
+<div><p>Will be stored as a <tt class="xref py py-class docutils literal"><span class="pre">pandas.Series</span></tt>. (Not implemented)</p>
+</div></blockquote>
+<p><strong>verbose</strong> : bool</p>
 <blockquote class="last">
-<div><dl class="docutils">
-<dt>A ZIP file which contains results.xml and data.npy:</dt>
-<dd><ul class="first last">
-<li><dl class="first docutils">
-<dt>results.xml <span class="classifier-delimiter">:</span> <span class="classifier">name of the xml file where parameters and</span></dt>
-<dd><p class="first last">observations will be written</p>
-</dd>
-</dl>
-</li>
-<li><p class="first">data.npy : data are stored in numpy&#8217;s binary format</p>
-</li>
-</ul>
-</dd>
-</dl>
+<div><p>Enable verbose mode.</p>
 </div></blockquote>
 </td>
 </tr>
@@ -114,7 +109,7 @@ and the trajectories in the other.</p>
 
 <dl class="method">
 <dt id="kt_simul.io.simuio.SimuIO.read">
-<tt class="descname">read</tt><big>(</big><em>simufname='results.zip'</em>, <em>verbose=False</em><big>)</big><a class="reference internal" href="../_modules/kt_simul/io/simuio.html#SimuIO.read"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#kt_simul.io.simuio.SimuIO.read" title="Permalink to this definition">¶</a></dt>
+<tt class="descname">read</tt><big>(</big><em>simufname</em>, <em>verbose=False</em><big>)</big><a class="reference internal" href="../_modules/kt_simul/io/simuio.html#SimuIO.read"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#kt_simul.io.simuio.SimuIO.read" title="Permalink to this definition">¶</a></dt>
 <dd><p>Creates a simul_spindle.Metaphase from a results.zip file.</p>
 <table class="docutils field-list" frame="void" rules="none">
 <col class="field-name" />
@@ -122,7 +117,8 @@ and the trajectories in the other.</p>
 <tbody valign="top">
 <tr class="field-odd field"><th class="field-name">Parameters :</th><td class="field-body"><p class="first"><strong>simufname</strong> : string, optional</p>
 <blockquote>
-<div><p>The .zip file where results from the existing simulation are (zip which contains xml and npy)</p>
+<div><p>The .zip file where results from the existing simulation are
+(zip which contains xml and npy)</p>
 </div></blockquote>
 <p><strong>verbose</strong> : bool</p>
 <blockquote>
@@ -131,6 +127,27 @@ and the trajectories in the other.</p>
 </td>
 </tr>
 <tr class="field-even field"><th class="field-name">Returns :</th><td class="field-body"><p class="first last"><strong>:class:`~kt_simul.core.simul_spindle.Metaphase`</strong> :</p>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="method">
+<dt id="kt_simul.io.simuio.SimuIO.build_tree">
+<tt class="descname">build_tree</tt><big>(</big><em>df</em><big>)</big><a class="headerlink" href="#kt_simul.io.simuio.SimuIO.build_tree" title="Permalink to this definition">¶</a></dt>
+<dd><p>Build <tt class="xref py py-class docutils literal"><span class="pre">ElementTree</span></tt> instance from <tt class="xref py py-class docutils literal"><span class="pre">pandas.DataFrame</span></tt>.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters :</th><td class="field-body"><p class="first"><strong>df</strong> : <tt class="xref py py-class docutils literal"><span class="pre">pandas.DataFrame</span></tt></p>
+<blockquote>
+<div><p>df should come from ParamTree.to_df() method.</p>
+</div></blockquote>
+</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns :</th><td class="field-body"><p class="first last"><strong>:class:`ElementTree`</strong> :</p>
 </td>
 </tr>
 </tbody>
