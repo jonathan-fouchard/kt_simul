@@ -1,0 +1,166 @@
+
+
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    
+    <title>kt_simul.io.xml_handler &mdash; KtSimul 0.1 documentation</title>
+    
+    <link rel="stylesheet" href="../_static/default.css" type="text/css" />
+    <link rel="stylesheet" href="../_static/pygments.css" type="text/css" />
+    
+    <script type="text/javascript">
+      var DOCUMENTATION_OPTIONS = {
+        URL_ROOT:    '../',
+        VERSION:     '0.1',
+        COLLAPSE_INDEX: false,
+        FILE_SUFFIX: '.html',
+        HAS_SOURCE:  true
+      };
+    </script>
+    <script type="text/javascript" src="../_static/jquery.js"></script>
+    <script type="text/javascript" src="../_static/underscore.js"></script>
+    <script type="text/javascript" src="../_static/doctools.js"></script>
+    <script type="text/javascript" src="http://cdn.mathjax.org/mathjax/latest/MathJax.js?config=TeX-AMS-MML_HTMLorMML"></script>
+    <link rel="top" title="KtSimul 0.1 documentation" href="../index.html" />
+    <link rel="up" title="Input and output : kt_simul.io" href="../io.html" />
+    <link rel="prev" title="kt_simul.io.simuio" href="kt_simul.io.simuio.html" /> 
+  </head>
+  <body>
+    <div class="related">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../genindex.html" title="General Index"
+             accesskey="I">index</a></li>
+        <li class="right" >
+          <a href="../py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li class="right" >
+          <a href="../np-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li class="right" >
+          <a href="kt_simul.io.simuio.html" title="kt_simul.io.simuio"
+             accesskey="P">previous</a> |</li>
+        <li><a href="../index.html">KtSimul 0.1 documentation</a> &raquo;</li>
+          <li><a href="../api.html" >Explore the API</a> &raquo;</li>
+          <li><a href="../io.html" accesskey="U">Input and output : <tt class="docutils literal docutils literal docutils literal"><span class="pre">kt_simul.io</span></tt></a> &raquo;</li> 
+      </ul>
+    </div>  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body">
+            
+  <div class="section" id="module-kt_simul.io.xml_handler">
+<span id="kt-simul-io-xml-handler"></span><h1>kt_simul.io.xml_handler<a class="headerlink" href="#module-kt_simul.io.xml_handler" title="Permalink to this headline">¶</a></h1>
+<p>Handler for the parameters xml files &#8211; to allow phase space exploration</p>
+<dl class="function">
+<dt id="kt_simul.io.xml_handler.indent">
+<tt class="descclassname">kt_simul.io.xml_handler.</tt><tt class="descname">indent</tt><big>(</big><em>elem</em>, <em>level=0</em><big>)</big><a class="reference internal" href="../_modules/kt_simul/io/xml_handler.html#indent"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#kt_simul.io.xml_handler.indent" title="Permalink to this definition">¶</a></dt>
+<dd><p>Utility to have a nice printing of the xml tree
+Source : <a class="reference external" href="http://effbot.org/zone/element-lib.htm#prettyprint">http://effbot.org/zone/element-lib.htm#prettyprint</a></p>
+</dd></dl>
+
+<dl class="class">
+<dt id="kt_simul.io.xml_handler.ParamTree">
+<em class="property">class </em><tt class="descclassname">kt_simul.io.xml_handler.</tt><tt class="descname">ParamTree</tt><big>(</big><em>xmlfile=None</em>, <em>root=None</em>, <em>adimentionalized=True</em><big>)</big><a class="reference internal" href="../_modules/kt_simul/io/xml_handler.html#ParamTree"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#kt_simul.io.xml_handler.ParamTree" title="Permalink to this definition">¶</a></dt>
+<dd><p>This class defines the container for the simulation parameters.
+It wraps an ElementTree instance whose elements contains the
+name, value (as a string), description and unit of each parameter and a
+dictionnary that is used during the simulation.</p>
+<p>The <cite>value</cite> attribute of the tree is not modified by adimentionalization,
+whereas the value in the dictionnary is changed.</p>
+<dl class="method">
+<dt id="kt_simul.io.xml_handler.ParamTree.adimentionalize">
+<tt class="descname">adimentionalize</tt><big>(</big><big>)</big><a class="reference internal" href="../_modules/kt_simul/io/xml_handler.html#ParamTree.adimentionalize"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#kt_simul.io.xml_handler.ParamTree.adimentionalize" title="Permalink to this definition">¶</a></dt>
+<dd><p>This function scales everything taking dt as unit time, Vk as
+unit speed, and Fk as unit force. It relies on a correct
+definition of the units of the elements of the param tree,
+thus a correct spelling in the xml file, so please beware</p>
+<p>Note that the &#8220;value&#8221; attribute of the ElementTree instance are
+NOT modified. Also, applying this function on an already
+adimentionalized  dictionnary won&#8221;t change any thing</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="kt_simul.io.xml_handler.ParamTree.change_dic">
+<tt class="descname">change_dic</tt><big>(</big><em>key</em>, <em>new_value</em>, <em>verbose=True</em><big>)</big><a class="reference internal" href="../_modules/kt_simul/io/xml_handler.html#ParamTree.change_dic"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#kt_simul.io.xml_handler.ParamTree.change_dic" title="Permalink to this definition">¶</a></dt>
+<dd><p>Changes the Element tree and re-creates the associated dictionnary.
+If write is True, re_writes the parameters files
+(older version is backed up if back_up is True)</p>
+<p>new_value is absolute - it has units</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="kt_simul.io.xml_handler.ParamTree.save">
+<tt class="descname">save</tt><big>(</big><em>path</em><big>)</big><a class="reference internal" href="../_modules/kt_simul/io/xml_handler.html#ParamTree.save"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#kt_simul.io.xml_handler.ParamTree.save" title="Permalink to this definition">¶</a></dt>
+<dd><p>Save root tree to a xml file</p>
+</dd></dl>
+
+</dd></dl>
+
+</div>
+
+
+          </div>
+        </div>
+      </div>
+      <div class="sphinxsidebar">
+        <div class="sphinxsidebarwrapper">
+  <h4>Previous topic</h4>
+  <p class="topless"><a href="kt_simul.io.simuio.html"
+                        title="previous chapter">kt_simul.io.simuio</a></p>
+  <h3>This Page</h3>
+  <ul class="this-page-menu">
+    <li><a href="../_sources/generated/kt_simul.io.xml_handler.txt"
+           rel="nofollow">Show Source</a></li>
+  </ul>
+<div id="searchbox" style="display: none">
+  <h3>Quick search</h3>
+    <form class="search" action="../search.html" method="get">
+      <input type="text" name="q" />
+      <input type="submit" value="Go" />
+      <input type="hidden" name="check_keywords" value="yes" />
+      <input type="hidden" name="area" value="default" />
+    </form>
+    <p class="searchtip" style="font-size: 90%">
+    Enter search terms or a module, class or function name.
+    </p>
+</div>
+<script type="text/javascript">$('#searchbox').show(0);</script>
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="related">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../genindex.html" title="General Index"
+             >index</a></li>
+        <li class="right" >
+          <a href="../py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li class="right" >
+          <a href="../np-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li class="right" >
+          <a href="kt_simul.io.simuio.html" title="kt_simul.io.simuio"
+             >previous</a> |</li>
+        <li><a href="../index.html">KtSimul 0.1 documentation</a> &raquo;</li>
+          <li><a href="../api.html" >Explore the API</a> &raquo;</li>
+          <li><a href="../io.html" >Input and output : <tt class="docutils literal docutils literal docutils literal"><span class="pre">kt_simul.io</span></tt></a> &raquo;</li> 
+      </ul>
+    </div>
+    <div class="footer">
+        &copy; Copyright 2013, Guillaume Gay.
+      Created using <a href="http://sphinx.pocoo.org/">Sphinx</a> 1.1.3.
+    </div>
+  </body>
+</html>

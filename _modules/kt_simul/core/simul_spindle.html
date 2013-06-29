@@ -1,0 +1,548 @@
+
+
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    
+    <title>kt_simul.core.simul_spindle &mdash; KtSimul 0.1 documentation</title>
+    
+    <link rel="stylesheet" href="../../../_static/default.css" type="text/css" />
+    <link rel="stylesheet" href="../../../_static/pygments.css" type="text/css" />
+    
+    <script type="text/javascript">
+      var DOCUMENTATION_OPTIONS = {
+        URL_ROOT:    '../../../',
+        VERSION:     '0.1',
+        COLLAPSE_INDEX: false,
+        FILE_SUFFIX: '.html',
+        HAS_SOURCE:  true
+      };
+    </script>
+    <script type="text/javascript" src="../../../_static/jquery.js"></script>
+    <script type="text/javascript" src="../../../_static/underscore.js"></script>
+    <script type="text/javascript" src="../../../_static/doctools.js"></script>
+    <script type="text/javascript" src="http://cdn.mathjax.org/mathjax/latest/MathJax.js?config=TeX-AMS-MML_HTMLorMML"></script>
+    <link rel="top" title="KtSimul 0.1 documentation" href="../../../index.html" />
+    <link rel="up" title="Module code" href="../../index.html" /> 
+  </head>
+  <body>
+    <div class="related">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../../../genindex.html" title="General Index"
+             accesskey="I">index</a></li>
+        <li class="right" >
+          <a href="../../../py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li class="right" >
+          <a href="../../../np-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li><a href="../../../index.html">KtSimul 0.1 documentation</a> &raquo;</li>
+          <li><a href="../../index.html" accesskey="U">Module code</a> &raquo;</li> 
+      </ul>
+    </div>  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body">
+            
+  <h1>Source code for kt_simul.core.simul_spindle</h1><div class="highlight"><pre>
+<span class="c"># -*- coding: utf-8 -*-</span>
+<span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">This module provides the core simulation functionalities.</span>
+
+<span class="sd">See Gay et al. J. Cell Biol., 2012 http://dx.doi.org/10.1083/jcb.201107124</span>
+<span class="sd">The original framework was adapted from:</span>
+<span class="sd">Civelekoglu-Scholey et al. Biophys. J. 90(11), 2006</span>
+<span class="sd">http://dx.doi.org/10.1529/biophysj.105.078691</span>
+<span class="sd">&quot;&quot;&quot;</span>
+
+<span class="kn">import</span> <span class="nn">logging</span>
+<span class="kn">import</span> <span class="nn">numpy</span> <span class="kn">as</span> <span class="nn">np</span>
+<span class="kn">import</span> <span class="nn">collections</span>
+
+<span class="c"># Local imports</span>
+<span class="kn">from</span> <span class="nn">kt_simul.core.spindle_dynamics</span> <span class="kn">import</span> <span class="n">KinetoDynamics</span>
+<span class="kn">from</span> <span class="nn">kt_simul.io.xml_handler</span> <span class="kn">import</span> <span class="n">ParamTree</span>
+<span class="kn">from</span> <span class="nn">kt_simul.core</span> <span class="kn">import</span> <span class="n">parameters</span>
+<span class="kn">from</span> <span class="nn">kt_simul.utils.progress</span> <span class="kn">import</span> <span class="n">print_progress</span>
+<span class="kn">from</span> <span class="nn">kt_simul.utils.format</span> <span class="kn">import</span> <span class="n">pretty_dict</span>
+
+<span class="n">logger</span> <span class="o">=</span> <span class="n">logging</span><span class="o">.</span><span class="n">getLogger</span><span class="p">(</span><span class="n">__name__</span><span class="p">)</span>
+
+<span class="n">__all__</span> <span class="o">=</span> <span class="p">[</span><span class="s">&quot;Metaphase&quot;</span><span class="p">,</span> <span class="s">&quot;PARAMFILE&quot;</span><span class="p">,</span> <span class="s">&quot;MEASUREFILE&quot;</span><span class="p">]</span>
+
+<span class="n">CURRENT_DIR</span> <span class="o">=</span> <span class="n">parameters</span><span class="o">.</span><span class="n">CURRENT_DIR</span>
+<span class="n">ROOT_DIR</span> <span class="o">=</span> <span class="n">parameters</span><span class="o">.</span><span class="n">ROOT_DIR</span>
+<span class="n">PARAMFILE</span> <span class="o">=</span> <span class="n">parameters</span><span class="o">.</span><span class="n">PARAMFILE</span>
+<span class="n">MEASUREFILE</span> <span class="o">=</span> <span class="n">parameters</span><span class="o">.</span><span class="n">MEASUREFILE</span>
+<span class="n">MEASURETREE</span> <span class="o">=</span> <span class="n">parameters</span><span class="o">.</span><span class="n">MEASURETREE</span>
+<span class="n">MEASURES</span> <span class="o">=</span> <span class="n">parameters</span><span class="o">.</span><span class="n">MEASURES</span>
+
+
+<div class="viewcode-block" id="Metaphase"><a class="viewcode-back" href="../../../generated/kt_simul.core.simul_spindle.html#kt_simul.core.simul_spindle.Metaphase">[docs]</a><span class="k">class</span> <span class="nc">Metaphase</span><span class="p">(</span><span class="nb">object</span><span class="p">):</span>
+
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    An instance of the Metaphase class is a wrapper around</span>
+<span class="sd">    the whole simulation.</span>
+
+<span class="sd">    Launch a new simulation::</span>
+
+<span class="sd">        from kt_simul.simul_spindle import Metaphase</span>
+<span class="sd">        m = Metaphase()</span>
+<span class="sd">        m.simul()</span>
+<span class="sd">        m.show_trajs()</span>
+<span class="sd">        m.write_results(&#39;examples/docstring_results.xml&#39;,</span>
+<span class="sd">                        &#39;examples/docstring_data.npy&#39;)</span>
+
+<span class="sd">    From an already runned simulation::</span>
+
+<span class="sd">        from kt_simul.simul_spindle import Metaphase</span>
+<span class="sd">        m1 = get_fromfile(&#39;examples/docstring_results.xml&#39;)</span>
+<span class="sd">        m1.show_one(1) #This shows the trajactory of the chromosome 1</span>
+<span class="sd">        m2 = Metaphase(m1.paramtree, m1.measuretree) #A new simulation</span>
+<span class="sd">        m2.simul(ablat = 600) #this time with spindle ablation</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+
+<span class="sd">    paramtree : :class:`~kt_simul.io.xml_handler.ParamTree` instance or None</span>
+<span class="sd">        The paramtree contains the parameters for the simulation</span>
+<span class="sd">        if paramtree is None, the parameters are read</span>
+<span class="sd">        from the file paramfile. Defaults to None.</span>
+
+<span class="sd">    measuretree : :class:`~kt_simul.io.xml_handler.ParamTree` instance or None</span>
+<span class="sd">        The measuretree contains the observed characteristics</span>
+<span class="sd">        of the mitosis e.g. metaphase spindle elongation rate, etc.</span>
+<span class="sd">        if measuretree is None, the measures are read from the file</span>
+<span class="sd">        indicated by the measurefile argument. Defaults to None.</span>
+
+<span class="sd">    paramfile : str</span>
+<span class="sd">        Path to a xml file to read the parameters from. Defaults to the</span>
+<span class="sd">        file params.xml in the module&#39;s default directory. Other parameter</span>
+<span class="sd">        files can be produced by editing and changing the default one.</span>
+<span class="sd">        If the paramtree argument is not None,  paramfile is ignored</span>
+
+<span class="sd">    measurefile : str</span>
+<span class="sd">        Path to a xml file to read the measures from. Defaults to the</span>
+<span class="sd">        file measures.xml in the module&#39;s default directory.</span>
+<span class="sd">        Other measure files can be produced by editing and changing</span>
+<span class="sd">        the default one. If the measuretree argument is not None, measurefile</span>
+<span class="sd">        is ignored</span>
+
+<span class="sd">    initial_plug : string or None</span>
+<span class="sd">        Defines globally the initial attachment states. This argument can have the following values:</span>
+<span class="sd">            - &#39;null&#39;: all kinetochores are detached</span>
+<span class="sd">            - &#39;amphitelic&#39;: all chromosmes are amphitelic</span>
+<span class="sd">            - &#39;random&#39;: all attachement site can be bound to either pole or deteched with equal prob.</span>
+<span class="sd">            - &#39;monotelic&#39;: right kinetochores are attached to the same pole, left ones are detached</span>
+<span class="sd">            - &#39;syntelic&#39; : all kinetochores are attached to the same pole</span>
+
+<span class="sd">    reduce_p : bool</span>
+<span class="sd">        If True, changes the parameters according to the measures</span>
+<span class="sd">        so that the simulation average behaviour complies with</span>
+<span class="sd">        the data in the measures dictionary</span>
+
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span>  <span class="n">paramtree</span><span class="o">=</span><span class="bp">None</span><span class="p">,</span> <span class="n">measuretree</span><span class="o">=</span><span class="bp">None</span><span class="p">,</span>
+                 <span class="n">paramfile</span><span class="o">=</span><span class="bp">None</span><span class="p">,</span> <span class="n">measurefile</span><span class="o">=</span><span class="bp">None</span><span class="p">,</span>
+                 <span class="n">initial_plug</span><span class="o">=</span><span class="s">&#39;random&#39;</span><span class="p">,</span> <span class="n">reduce_p</span><span class="o">=</span><span class="bp">True</span><span class="p">,</span>
+                 <span class="n">verbose</span><span class="o">=</span><span class="bp">False</span><span class="p">):</span>
+
+        <span class="c"># Enable or disable log console</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">verbose</span> <span class="o">=</span> <span class="n">verbose</span>
+        <span class="n">logger</span> <span class="o">=</span> <span class="n">logging</span><span class="o">.</span><span class="n">getLogger</span><span class="p">(</span><span class="n">__name__</span><span class="p">)</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">verbose</span><span class="p">:</span>
+            <span class="n">logger</span><span class="o">.</span><span class="n">disabled</span> <span class="o">=</span> <span class="bp">True</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">logger</span><span class="o">.</span><span class="n">disabled</span> <span class="o">=</span> <span class="bp">False</span>
+
+        <span class="k">if</span> <span class="ow">not</span> <span class="n">paramfile</span><span class="p">:</span>
+            <span class="n">paramfile</span> <span class="o">=</span> <span class="n">PARAMFILE</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="n">measurefile</span><span class="p">:</span>
+            <span class="n">measurefile</span> <span class="o">=</span> <span class="n">MEASUREFILE</span>
+
+        <span class="k">if</span> <span class="n">paramtree</span> <span class="ow">is</span> <span class="bp">None</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">paramtree</span> <span class="o">=</span> <span class="n">ParamTree</span><span class="p">(</span><span class="n">paramfile</span><span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">paramtree</span> <span class="o">=</span> <span class="n">paramtree</span>
+        <span class="k">if</span> <span class="n">measuretree</span> <span class="ow">is</span> <span class="bp">None</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">measuretree</span> <span class="o">=</span> <span class="n">ParamTree</span><span class="p">(</span><span class="n">measurefile</span><span class="p">,</span> <span class="n">adimentionalized</span><span class="o">=</span><span class="bp">False</span><span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">measuretree</span> <span class="o">=</span> <span class="n">measuretree</span>
+
+        <span class="k">if</span> <span class="n">reduce_p</span><span class="p">:</span>
+            <span class="n">parameters</span><span class="o">.</span><span class="n">reduce_params</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">paramtree</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">measuretree</span><span class="p">)</span>
+
+        <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s">&#39;Parameters loaded&#39;</span><span class="p">)</span>
+
+        <span class="n">params</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">paramtree</span><span class="o">.</span><span class="n">relative_dic</span>
+        <span class="c"># Reset explicitely the unit parameters to their</span>
+        <span class="c"># dimentionalized value</span>
+        <span class="n">params</span><span class="p">[</span><span class="s">&#39;Vk&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">paramtree</span><span class="o">.</span><span class="n">absolute_dic</span><span class="p">[</span><span class="s">&#39;Vk&#39;</span><span class="p">]</span>
+        <span class="n">params</span><span class="p">[</span><span class="s">&#39;Fk&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">paramtree</span><span class="o">.</span><span class="n">absolute_dic</span><span class="p">[</span><span class="s">&#39;Fk&#39;</span><span class="p">]</span>
+        <span class="n">params</span><span class="p">[</span><span class="s">&#39;dt&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">paramtree</span><span class="o">.</span><span class="n">absolute_dic</span><span class="p">[</span><span class="s">&#39;dt&#39;</span><span class="p">]</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">KD</span> <span class="o">=</span> <span class="n">KinetoDynamics</span><span class="p">(</span><span class="n">params</span><span class="p">,</span> <span class="n">initial_plug</span><span class="o">=</span><span class="n">initial_plug</span><span class="p">)</span>
+        <span class="n">dt</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">paramtree</span><span class="o">.</span><span class="n">absolute_dic</span><span class="p">[</span><span class="s">&#39;dt&#39;</span><span class="p">]</span>
+        <span class="n">duration</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">paramtree</span><span class="o">.</span><span class="n">absolute_dic</span><span class="p">[</span><span class="s">&#39;span&#39;</span><span class="p">]</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">num_steps</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="n">duration</span> <span class="o">/</span> <span class="n">dt</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">KD</span><span class="o">.</span><span class="n">anaphase</span> <span class="o">=</span> <span class="bp">False</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">timelapse</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">arange</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="n">duration</span><span class="p">,</span> <span class="n">dt</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">report</span> <span class="o">=</span> <span class="p">[]</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">delay</span> <span class="o">=</span> <span class="o">-</span><span class="mi">1</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">observations</span> <span class="o">=</span> <span class="p">{}</span>
+
+        <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s">&#39;Simulation initialized&#39;</span><span class="p">)</span>
+        <span class="n">logger</span><span class="o">.</span><span class="n">disabled</span> <span class="o">=</span> <span class="bp">False</span>
+
+    <span class="k">def</span> <span class="nf">__str__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="n">lines</span> <span class="o">=</span> <span class="p">[]</span>
+        <span class="n">lines</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="s">&#39;Metaphase class&#39;</span><span class="p">)</span>
+        <span class="k">try</span><span class="p">:</span>
+            <span class="n">lines</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="s">&#39;Parameters:&#39;</span><span class="p">)</span>
+            <span class="k">for</span> <span class="n">line</span> <span class="ow">in</span> <span class="nb">str</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">paramtree</span><span class="o">.</span><span class="n">relative_dic</span><span class="p">)</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="s">&#39;,&#39;</span><span class="p">):</span>
+                <span class="n">lines</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">line</span><span class="p">)</span>
+        <span class="k">except</span> <span class="ne">AttributeError</span><span class="p">:</span>
+            <span class="k">pass</span>
+        <span class="k">try</span><span class="p">:</span>
+            <span class="n">lines</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="s">&#39;Measures:&#39;</span><span class="p">)</span>
+            <span class="k">for</span> <span class="n">line</span> <span class="ow">in</span> <span class="nb">str</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">measuretree</span><span class="o">.</span><span class="n">absolute_dic</span><span class="p">)</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="s">&#39;,&#39;</span><span class="p">):</span>
+                <span class="n">lines</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">line</span><span class="p">)</span>
+        <span class="k">except</span> <span class="ne">AttributeError</span><span class="p">:</span>
+            <span class="k">pass</span>
+        <span class="n">lines</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="s">&#39;&#39;</span><span class="p">)</span>
+        <span class="n">lines</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="s">&#39;Observations:&#39;</span><span class="p">)</span>
+        <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">observations</span><span class="o">.</span><span class="n">keys</span><span class="p">())</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">:</span>
+            <span class="k">for</span> <span class="n">line</span> <span class="ow">in</span> <span class="nb">str</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">observations</span><span class="p">)</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="s">&#39;,&#39;</span><span class="p">):</span>
+                <span class="n">lines</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">line</span><span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">lines</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="s">&#39;Not yet evaluated&#39;</span><span class="p">)</span>
+        <span class="k">return</span> <span class="s">&#39;</span><span class="se">\n</span><span class="s">&#39;</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">lines</span><span class="p">)</span>
+
+<div class="viewcode-block" id="Metaphase.simul"><a class="viewcode-back" href="../../../generated/kt_simul.core.simul_spindle.html#kt_simul.core.simul_spindle.Metaphase.simul">[docs]</a>    <span class="k">def</span> <span class="nf">simul</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">ablat</span><span class="o">=</span><span class="bp">None</span><span class="p">,</span> <span class="n">ablat_pos</span><span class="o">=</span><span class="mf">0.</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        The simulation main loop.</span>
+
+<span class="sd">        Parameters</span>
+<span class="sd">        ----------</span>
+
+<span class="sd">        ablat : float, optional</span>
+<span class="sd">            Timepoint at which ablation takes place. If None (default)</span>
+<span class="sd">            no ablation is performed.</span>
+
+<span class="sd">        &quot;&quot;&quot;</span>
+
+        <span class="c"># Check is simulation has already be done</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">KD</span><span class="o">.</span><span class="n">simulation_done</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="n">SimulationAlreadyDone</span><span class="p">(</span><span class="s">&quot;&quot;&quot;A simulation is already done on this</span>
+<span class="s">                instance. Please create another Metaphase instance</span>
+<span class="s">                to launch a new simulation.&quot;&quot;&quot;</span><span class="p">)</span>
+
+        <span class="n">kappa_c</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">KD</span><span class="o">.</span><span class="n">params</span><span class="p">[</span><span class="s">&#39;kappa_c&#39;</span><span class="p">]</span>
+
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">verbose</span><span class="p">:</span>
+            <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s">&#39;Running simulation&#39;</span><span class="p">)</span>
+        <span class="n">bef</span> <span class="o">=</span> <span class="mi">0</span>
+        <span class="n">log_anaphase_onset</span> <span class="o">=</span> <span class="bp">False</span>
+
+        <span class="k">for</span> <span class="n">time_point</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">num_steps</span><span class="p">):</span>
+
+            <span class="n">progress</span> <span class="o">=</span> <span class="nb">int</span><span class="p">((</span><span class="n">time_point</span> <span class="o">*</span> <span class="mf">100.0</span><span class="p">)</span> <span class="o">/</span> <span class="bp">self</span><span class="o">.</span><span class="n">num_steps</span><span class="p">)</span>
+
+            <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">verbose</span> <span class="ow">and</span> <span class="n">progress</span> <span class="o">!=</span> <span class="n">bef</span><span class="p">:</span>
+                <span class="n">print_progress</span><span class="p">(</span><span class="nb">int</span><span class="p">(</span><span class="n">progress</span><span class="p">))</span>
+                <span class="n">bef</span> <span class="o">=</span> <span class="n">progress</span>
+
+            <span class="c"># Ablation test</span>
+            <span class="k">if</span> <span class="n">ablat</span> <span class="o">==</span> <span class="n">time_point</span><span class="p">:</span>
+                <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">verbose</span><span class="p">:</span>
+                    <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s">&quot;Performing ablation&quot;</span><span class="p">)</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">_ablation</span><span class="p">(</span><span class="n">time_point</span><span class="p">,</span> <span class="n">pos</span><span class="o">=</span><span class="n">ablat_pos</span><span class="p">)</span>
+
+            <span class="c"># Anaphase transition ?</span>
+            <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_anaphase_test</span><span class="p">(</span><span class="n">time_point</span><span class="p">):</span>
+                <span class="k">if</span> <span class="ow">not</span> <span class="n">log_anaphase_onset</span><span class="p">:</span>
+                    <span class="n">print_progress</span><span class="p">(</span><span class="o">-</span><span class="mi">1</span><span class="p">)</span>
+                    <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">verbose</span><span class="p">:</span>
+                        <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s">&quot;Anaphase onset at </span><span class="si">%i</span><span class="s"> / </span><span class="si">%i</span><span class="s">&quot;</span> <span class="o">%</span>
+                                   <span class="p">(</span><span class="n">time_point</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">num_steps</span><span class="p">))</span>
+                    <span class="n">log_anaphase_onset</span> <span class="o">=</span> <span class="bp">True</span>
+
+            <span class="bp">self</span><span class="o">.</span><span class="n">KD</span><span class="o">.</span><span class="n">one_step</span><span class="p">(</span><span class="n">time_point</span><span class="p">)</span>
+            <span class="c"># if time_point % 100 == 0:</span>
+                <span class="c"># print self.KD.At_mat</span>
+
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">verbose</span><span class="p">:</span>
+            <span class="n">print_progress</span><span class="p">(</span><span class="o">-</span><span class="mi">1</span><span class="p">)</span>
+
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">verbose</span><span class="p">:</span>
+            <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s">&#39;Simulation done&#39;</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">KD</span><span class="o">.</span><span class="n">params</span><span class="p">[</span><span class="s">&#39;kappa_c&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">kappa_c</span>
+        <span class="n">delay_str</span> <span class="o">=</span> <span class="s">&quot;delay = </span><span class="si">%2d</span><span class="s"> seconds&quot;</span> <span class="o">%</span> <span class="bp">self</span><span class="o">.</span><span class="n">delay</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">report</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">delay_str</span><span class="p">)</span>
+
+        <span class="k">for</span> <span class="n">ch</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">KD</span><span class="o">.</span><span class="n">chromosomes</span><span class="p">:</span>
+            <span class="n">ch</span><span class="o">.</span><span class="n">calc_correct_history</span><span class="p">()</span>
+            <span class="n">ch</span><span class="o">.</span><span class="n">calc_erroneous_history</span><span class="p">()</span>
+            <span class="n">ch</span><span class="o">.</span><span class="n">cen_A</span><span class="o">.</span><span class="n">calc_toa</span><span class="p">()</span>
+            <span class="n">ch</span><span class="o">.</span><span class="n">cen_B</span><span class="o">.</span><span class="n">calc_toa</span><span class="p">()</span>
+
+    <span class="c"># def evaluate(self, name=None, groups=[],</span>
+    <span class="c">#              debug=False,</span>
+    <span class="c">#              verbose=False,</span>
+    <span class="c">#              draw=False,</span>
+    <span class="c">#              run_all=False):</span>
+    <span class="c">#     &quot;&quot;&quot;</span>
+    <span class="c">#     Passes all the evaluations in kt_simul.analysis.valuations module</span>
+    <span class="c">#     results are stored in the self.observations dictionnary</span>
+
+    <span class="c">#     TODO: most of the code of this method should be moved to</span>
+    <span class="c">#     kt_simul.analysis.evaluations.__init__</span>
+    <span class="c">#     &quot;&quot;&quot;</span>
+    <span class="c">#     if not self.KD.simulation_done:</span>
+    <span class="c">#         logger.info(&quot;No simulation was runned&quot;)</span>
+    <span class="c">#         return False</span>
+
+    <span class="c">#     if not name and verbose:</span>
+    <span class="c">#         logger.info(&quot;Starting evaluations&quot;)</span>
+    <span class="c"># all_evaluations = evaluations.find_evaluations(name=name, groups=groups,</span>
+    <span class="c"># run_all=run_all)</span>
+
+    <span class="c">#     if not all_evaluations:</span>
+    <span class="c">#         if verbose:</span>
+    <span class="c">#             logger.info(&quot;No evaluations found&quot;)</span>
+    <span class="c">#         return False</span>
+
+    <span class="c">#     for evaluation in all_evaluations:</span>
+    <span class="c">#         if verbose:</span>
+    <span class="c">#             logger.info(&quot;Running %s&quot; % evaluation.name)</span>
+    <span class="c">#         if debug:</span>
+    <span class="c">#             result = evaluation().run(self.KD, draw)</span>
+    <span class="c">#             if verbose:</span>
+    <span class="c">#                 logger.info(&quot;%s done&quot; % evaluation.name)</span>
+    <span class="c">#         else:</span>
+    <span class="c">#             try:</span>
+    <span class="c">#                 result = evaluation().run(self.KD, draw)</span>
+    <span class="c">#                 if verbose:</span>
+    <span class="c">#                     logger.info(&quot;%s done&quot; % evaluation.name)</span>
+    <span class="c">#             except Exception as e:</span>
+    <span class="c">#                 result = np.nan</span>
+    <span class="c">#                 if verbose:</span>
+    <span class="c"># logger.info(&quot;%s returns errors : %s&quot; % (evaluation.name, e))</span>
+
+    <span class="c">#         if name and not run_all:</span>
+    <span class="c">#             return result</span>
+    <span class="c">#         else:</span>
+    <span class="c">#             current_name = evaluation.name.replace(&quot; &quot;, &quot;_&quot;)</span>
+    <span class="c">#             self.observations[current_name] = result</span>
+
+    <span class="c">#     if verbose:</span>
+    <span class="c">#         logger.info(&quot;All evaluations processed&quot;)</span>
+
+    <span class="c">#     return self.observations</span>
+</div>
+<div class="viewcode-block" id="Metaphase.get_report"><a class="viewcode-back" href="../../../generated/kt_simul.core.simul_spindle.html#kt_simul.core.simul_spindle.Metaphase.get_report">[docs]</a>    <span class="k">def</span> <span class="nf">get_report</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">time</span><span class="o">=</span><span class="mi">0</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Print simulation state about a specific time point</span>
+
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">params</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">paramtree</span><span class="o">.</span><span class="n">relative_dic</span>
+
+        <span class="n">report</span> <span class="o">=</span> <span class="n">collections</span><span class="o">.</span><span class="n">OrderedDict</span><span class="p">()</span>
+
+        <span class="n">report</span><span class="p">[</span><span class="s">&quot;Total time (span)&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">params</span><span class="p">[</span><span class="s">&quot;span&quot;</span><span class="p">]</span>
+        <span class="n">report</span><span class="p">[</span><span class="s">&quot;Time precision (dt)&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">params</span><span class="p">[</span><span class="s">&quot;dt&quot;</span><span class="p">]</span>
+        <span class="n">report</span><span class="p">[</span><span class="s">&quot;Chromosomes (N)&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">params</span><span class="p">[</span><span class="s">&quot;N&quot;</span><span class="p">]</span>
+        <span class="n">report</span><span class="p">[</span><span class="s">&quot;Kinetochores (Mk)&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">params</span><span class="p">[</span><span class="s">&quot;Mk&quot;</span><span class="p">]</span>
+        <span class="n">report</span><span class="p">[</span><span class="s">&quot;separate&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="s">&quot;&quot;</span>
+
+        <span class="n">report</span><span class="p">[</span><span class="s">&quot;Current time&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="s">&quot;</span><span class="si">%i</span><span class="se">\n</span><span class="s">&quot;</span> <span class="o">%</span> <span class="p">((</span><span class="n">time</span> <span class="o">+</span> <span class="mi">1</span><span class="p">)</span> <span class="o">*</span> <span class="nb">float</span><span class="p">(</span><span class="n">params</span><span class="p">[</span><span class="s">&quot;dt&quot;</span><span class="p">]))</span>
+
+        <span class="n">report</span><span class="p">[</span><span class="s">&quot;separate&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="s">&quot;&quot;</span>
+        <span class="n">report</span><span class="p">[</span><span class="s">&quot;spbR pos&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="nb">round</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">KD</span><span class="o">.</span><span class="n">spbR</span><span class="o">.</span><span class="n">traj</span><span class="p">[</span><span class="n">time</span><span class="p">],</span> <span class="mi">3</span><span class="p">)</span>
+        <span class="n">report</span><span class="p">[</span><span class="s">&quot;spbL pos&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="nb">round</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">KD</span><span class="o">.</span><span class="n">spbL</span><span class="o">.</span><span class="n">traj</span><span class="p">[</span><span class="n">time</span><span class="p">],</span> <span class="mi">3</span><span class="p">)</span>
+        <span class="n">report</span><span class="p">[</span><span class="s">&quot;separate&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="s">&quot;&quot;</span>
+
+        <span class="k">for</span> <span class="n">ch</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">KD</span><span class="o">.</span><span class="n">chromosomes</span><span class="p">:</span>
+            <span class="n">chdict</span> <span class="o">=</span> <span class="n">collections</span><span class="o">.</span><span class="n">OrderedDict</span><span class="p">()</span>
+            <span class="n">chdict</span><span class="p">[</span><span class="s">&quot;correct&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">ch</span><span class="o">.</span><span class="n">correct_history</span><span class="p">[</span><span class="n">time</span><span class="p">]</span>
+            <span class="n">chdict</span><span class="p">[</span><span class="s">&quot;erroneous&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">ch</span><span class="o">.</span><span class="n">erroneous_history</span><span class="p">[</span><span class="n">time</span><span class="p">]</span>
+            <span class="k">for</span> <span class="n">cent</span> <span class="ow">in</span> <span class="p">[</span><span class="n">ch</span><span class="o">.</span><span class="n">cen_A</span><span class="p">,</span> <span class="n">ch</span><span class="o">.</span><span class="n">cen_B</span><span class="p">]:</span>
+                <span class="n">cen_dict</span> <span class="o">=</span> <span class="n">collections</span><span class="o">.</span><span class="n">OrderedDict</span><span class="p">()</span>
+                <span class="n">cen_dict</span><span class="p">[</span><span class="s">&quot;position&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="nb">round</span><span class="p">(</span><span class="n">cent</span><span class="o">.</span><span class="n">traj</span><span class="p">[</span><span class="n">time</span><span class="p">],</span> <span class="mi">3</span><span class="p">)</span>
+                <span class="k">for</span> <span class="n">site</span> <span class="ow">in</span> <span class="n">cent</span><span class="o">.</span><span class="n">plugsites</span><span class="p">:</span>
+                    <span class="n">site_dict</span> <span class="o">=</span> <span class="n">collections</span><span class="o">.</span><span class="n">OrderedDict</span><span class="p">()</span>
+                    <span class="n">site_dict</span><span class="p">[</span><span class="s">&#39;position&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="nb">round</span><span class="p">(</span><span class="n">site</span><span class="o">.</span><span class="n">traj</span><span class="p">[</span><span class="n">time</span><span class="p">],</span> <span class="mi">3</span><span class="p">)</span>
+                    <span class="n">site_dict</span><span class="p">[</span><span class="s">&#39;Plug state&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">site</span><span class="o">.</span><span class="n">state_hist</span><span class="p">[</span><span class="n">time</span><span class="p">]</span>
+
+                    <span class="n">cen_dict</span><span class="p">[</span><span class="s">&quot;PlugSite </span><span class="si">%i</span><span class="s">&quot;</span> <span class="o">%</span> <span class="n">site</span><span class="o">.</span><span class="n">site_id</span><span class="p">]</span> <span class="o">=</span> <span class="n">site_dict</span>
+
+                <span class="n">chdict</span><span class="p">[</span><span class="s">&quot;Centromere </span><span class="si">%s</span><span class="s">&quot;</span> <span class="o">%</span> <span class="n">cent</span><span class="o">.</span><span class="n">tag</span><span class="p">]</span> <span class="o">=</span> <span class="n">cen_dict</span>
+
+            <span class="n">report</span><span class="p">[</span><span class="s">&quot;Chromosome </span><span class="si">%i</span><span class="s">&quot;</span> <span class="o">%</span> <span class="n">ch</span><span class="o">.</span><span class="n">ch_id</span><span class="p">]</span> <span class="o">=</span> <span class="n">chdict</span>
+            <span class="n">report</span><span class="p">[</span><span class="s">&quot;separate&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="s">&quot;&quot;</span>
+
+        <span class="k">return</span> <span class="n">pretty_dict</span><span class="p">(</span><span class="n">report</span><span class="p">)</span>
+</div>
+    <span class="k">def</span> <span class="nf">_anaphase_test</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">time_point</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        At anaphase onset, set the cohesin spring constent to 0 and</span>
+<span class="sd">        self.KD.anaphase to True.</span>
+
+<span class="sd">        Returns</span>
+<span class="sd">        -------</span>
+<span class="sd">        bool</span>
+<span class="sd">            True if anaphase has been executed.</span>
+
+<span class="sd">        &quot;&quot;&quot;</span>
+
+        <span class="n">t_A</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">KD</span><span class="o">.</span><span class="n">params</span><span class="p">[</span><span class="s">&#39;t_A&#39;</span><span class="p">])</span>
+        <span class="n">dt</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">KD</span><span class="o">.</span><span class="n">params</span><span class="p">[</span><span class="s">&#39;dt&#39;</span><span class="p">]</span>
+        <span class="n">t</span> <span class="o">=</span> <span class="n">time_point</span> <span class="o">*</span> <span class="n">dt</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">KD</span><span class="o">.</span><span class="n">anaphase</span><span class="p">:</span>
+            <span class="k">return</span> <span class="bp">True</span>
+        <span class="k">if</span> <span class="n">t</span> <span class="o">&gt;=</span> <span class="n">t_A</span> <span class="ow">and</span> <span class="bp">self</span><span class="o">.</span><span class="n">_plug_checkpoint</span><span class="p">():</span>
+            <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">delay</span> <span class="o">==</span> <span class="o">-</span><span class="mi">1</span><span class="p">:</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">delay</span> <span class="o">=</span> <span class="n">t</span> <span class="o">-</span> <span class="n">t_A</span>
+                <span class="c"># Then we just get rid of cohesin</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">KD</span><span class="o">.</span><span class="n">params</span><span class="p">[</span><span class="s">&#39;kappa_c&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="mf">0.</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">KD</span><span class="o">.</span><span class="n">calc_B</span><span class="p">()</span>
+                <span class="n">nb_mero</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_mero_checkpoint</span><span class="p">()</span>
+                <span class="k">if</span> <span class="n">nb_mero</span><span class="p">:</span>
+                    <span class="n">s</span> <span class="o">=</span> <span class="p">(</span><span class="s">&quot;There were </span><span class="si">%d</span><span class="s"> merotelic MT at anaphase onset&quot;</span>
+                         <span class="o">%</span> <span class="n">nb_mero</span><span class="p">)</span>
+                    <span class="bp">self</span><span class="o">.</span><span class="n">report</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">s</span><span class="p">)</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">KD</span><span class="o">.</span><span class="n">anaphase</span> <span class="o">=</span> <span class="bp">True</span>
+                <span class="k">return</span> <span class="bp">True</span>
+        <span class="k">return</span> <span class="bp">False</span>
+
+    <span class="k">def</span> <span class="nf">_ablation</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">time_point</span><span class="p">,</span> <span class="n">pos</span><span class="o">=</span><span class="bp">None</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Simulates a laser ablation: detaches all the kinetochores</span>
+<span class="sd">        and sets the midzone stall force Fmz to 0</span>
+
+<span class="sd">        Parameters</span>
+<span class="sd">        ----------</span>
+
+<span class="sd">        pos : float or None, optional</span>
+<span class="sd">            Position of the laser beam within the spindle</span>
+
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="n">pos</span> <span class="o">==</span> <span class="bp">None</span><span class="p">:</span>
+            <span class="n">pos</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">KD</span><span class="o">.</span><span class="n">spbR</span><span class="o">.</span><span class="n">pos</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">KD</span><span class="o">.</span><span class="n">spbL</span><span class="o">.</span><span class="n">pos</span> <span class="o">&lt;=</span> <span class="n">pos</span> <span class="o">&lt;=</span> <span class="bp">self</span><span class="o">.</span><span class="n">KD</span><span class="o">.</span><span class="n">spbR</span><span class="o">.</span><span class="n">pos</span><span class="p">:</span>
+            <span class="n">logger</span><span class="o">.</span><span class="n">warning</span><span class="p">(</span><span class="s">&#39;Missed shot, same player play again!&#39;</span><span class="p">)</span>
+            <span class="k">return</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">KD</span><span class="o">.</span><span class="n">params</span><span class="p">[</span><span class="s">&#39;Fmz&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="mf">0.</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">KD</span><span class="o">.</span><span class="n">params</span><span class="p">[</span><span class="s">&#39;k_a&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="mf">0.</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">KD</span><span class="o">.</span><span class="n">params</span><span class="p">[</span><span class="s">&#39;k_d0&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="mf">0.</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">KD</span><span class="o">.</span><span class="n">A0_mat</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">KD</span><span class="o">.</span><span class="n">time_invariantA</span><span class="p">()</span>
+
+        <span class="k">for</span> <span class="n">plugsite</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">KD</span><span class="o">.</span><span class="n">spindle</span><span class="o">.</span><span class="n">all_plugsites</span><span class="p">:</span>
+            <span class="k">if</span> <span class="n">pos</span> <span class="o">&lt;</span> <span class="n">plugsite</span><span class="o">.</span><span class="n">pos</span> <span class="ow">and</span> <span class="n">plugsite</span><span class="o">.</span><span class="n">plug_state</span> <span class="o">==</span> <span class="o">-</span> <span class="mi">1</span><span class="p">:</span>
+                <span class="n">plugsite</span><span class="o">.</span><span class="n">set_plug_state</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="n">time_point</span><span class="p">)</span>
+            <span class="k">elif</span> <span class="n">pos</span> <span class="o">&gt;</span> <span class="n">plugsite</span><span class="o">.</span><span class="n">pos</span> <span class="ow">and</span> <span class="n">plugsite</span><span class="o">.</span><span class="n">plug_state</span> <span class="o">==</span> <span class="mi">1</span><span class="p">:</span>
+                <span class="n">plugsite</span><span class="o">.</span><span class="n">set_plug_state</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="n">time_point</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">_plug_checkpoint</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        If the spindle assembly checkpoint is active, returns True</span>
+<span class="sd">        if all chromosomes are plugged by at least one kMT, False</span>
+<span class="sd">        otherwise.</span>
+
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">sac</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">KD</span><span class="o">.</span><span class="n">params</span><span class="p">[</span><span class="s">&#39;sac&#39;</span><span class="p">]</span>
+        <span class="k">if</span> <span class="n">sac</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
+            <span class="k">return</span> <span class="bp">True</span>
+        <span class="k">for</span> <span class="n">ch</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">KD</span><span class="o">.</span><span class="n">chromosomes</span><span class="p">:</span>
+            <span class="k">if</span> <span class="ow">not</span> <span class="n">ch</span><span class="o">.</span><span class="n">cen_A</span><span class="o">.</span><span class="n">is_attached</span><span class="p">()</span> <span class="ow">or</span> <span class="ow">not</span> <span class="n">ch</span><span class="o">.</span><span class="n">cen_B</span><span class="o">.</span><span class="n">is_attached</span><span class="p">():</span>
+                <span class="k">return</span> <span class="bp">False</span>
+        <span class="k">return</span> <span class="bp">True</span>
+
+    <span class="k">def</span> <span class="nf">_mero_checkpoint</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Returns</span>
+<span class="sd">        -------</span>
+
+<span class="sd">        int</span>
+<span class="sd">            The total number of merotellic kT</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">nb_mero</span> <span class="o">=</span> <span class="mi">0</span>
+        <span class="k">for</span> <span class="n">ch</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">KD</span><span class="o">.</span><span class="n">chromosomes</span><span class="p">:</span>
+            <span class="k">if</span> <span class="n">np</span><span class="o">.</span><span class="n">any</span><span class="p">(</span><span class="n">ch</span><span class="o">.</span><span class="n">erroneous</span><span class="p">()):</span>
+                <span class="n">nb_mero</span> <span class="o">+=</span> <span class="nb">sum</span><span class="p">(</span><span class="n">ch</span><span class="o">.</span><span class="n">erroneous</span><span class="p">())</span>
+                <span class="c"># print &quot;active checkpoint&quot;</span>
+        <span class="k">return</span> <span class="n">nb_mero</span>
+
+    <span class="k">def</span> <span class="nf">_mplate_checkpoint</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Returns</span>
+<span class="sd">        -------</span>
+<span class="sd">        bool</span>
+<span class="sd">            Returns True if each kinetochore is in the proper half</span>
+<span class="sd">            of the spindle</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">for</span> <span class="n">ch</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">KD</span><span class="o">.</span><span class="n">chromosomes</span><span class="p">:</span>
+            <span class="n">ktR</span> <span class="o">=</span> <span class="n">ch</span><span class="o">.</span><span class="n">cen_A</span><span class="o">.</span><span class="n">pos</span>
+            <span class="n">ktL</span> <span class="o">=</span> <span class="n">ch</span><span class="o">.</span><span class="n">cen_B</span><span class="o">.</span><span class="n">pos</span>
+            <span class="k">if</span> <span class="nb">min</span><span class="p">(</span><span class="n">ktR</span><span class="p">,</span> <span class="n">ktL</span><span class="p">)</span> <span class="o">&lt;=</span> <span class="mi">0</span> <span class="ow">and</span> <span class="nb">max</span><span class="p">(</span><span class="n">ktR</span><span class="p">,</span> <span class="n">ktL</span><span class="p">)</span> <span class="o">&gt;=</span> <span class="mi">0</span><span class="p">:</span>
+                <span class="k">return</span> <span class="bp">True</span>
+        <span class="k">return</span> <span class="bp">True</span>
+
+</div>
+<span class="k">class</span> <span class="nc">SimulationAlreadyDone</span><span class="p">(</span><span class="ne">Exception</span><span class="p">):</span>
+    <span class="k">pass</span>
+</pre></div>
+
+          </div>
+        </div>
+      </div>
+      <div class="sphinxsidebar">
+        <div class="sphinxsidebarwrapper">
+<div id="searchbox" style="display: none">
+  <h3>Quick search</h3>
+    <form class="search" action="../../../search.html" method="get">
+      <input type="text" name="q" />
+      <input type="submit" value="Go" />
+      <input type="hidden" name="check_keywords" value="yes" />
+      <input type="hidden" name="area" value="default" />
+    </form>
+    <p class="searchtip" style="font-size: 90%">
+    Enter search terms or a module, class or function name.
+    </p>
+</div>
+<script type="text/javascript">$('#searchbox').show(0);</script>
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="related">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../../../genindex.html" title="General Index"
+             >index</a></li>
+        <li class="right" >
+          <a href="../../../py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li class="right" >
+          <a href="../../../np-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li><a href="../../../index.html">KtSimul 0.1 documentation</a> &raquo;</li>
+          <li><a href="../../index.html" >Module code</a> &raquo;</li> 
+      </ul>
+    </div>
+    <div class="footer">
+        &copy; Copyright 2013, Guillaume Gay.
+      Created using <a href="http://sphinx.pocoo.org/">Sphinx</a> 1.1.3.
+    </div>
+  </body>
+</html>

@@ -1,0 +1,192 @@
+
+
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    
+    <title>kt_simul.core.spindle_dynamics &mdash; KtSimul 0.1 documentation</title>
+    
+    <link rel="stylesheet" href="../_static/default.css" type="text/css" />
+    <link rel="stylesheet" href="../_static/pygments.css" type="text/css" />
+    
+    <script type="text/javascript">
+      var DOCUMENTATION_OPTIONS = {
+        URL_ROOT:    '../',
+        VERSION:     '0.1',
+        COLLAPSE_INDEX: false,
+        FILE_SUFFIX: '.html',
+        HAS_SOURCE:  true
+      };
+    </script>
+    <script type="text/javascript" src="../_static/jquery.js"></script>
+    <script type="text/javascript" src="../_static/underscore.js"></script>
+    <script type="text/javascript" src="../_static/doctools.js"></script>
+    <script type="text/javascript" src="http://cdn.mathjax.org/mathjax/latest/MathJax.js?config=TeX-AMS-MML_HTMLorMML"></script>
+    <link rel="top" title="KtSimul 0.1 documentation" href="../index.html" />
+    <link rel="up" title="Main simulation components : kt_simul.core" href="../core.html" />
+    <link rel="next" title="kt_simul.core.components" href="kt_simul.core.components.html" />
+    <link rel="prev" title="kt_simul.core.simul_spindle" href="kt_simul.core.simul_spindle.html" /> 
+  </head>
+  <body>
+    <div class="related">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../genindex.html" title="General Index"
+             accesskey="I">index</a></li>
+        <li class="right" >
+          <a href="../py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li class="right" >
+          <a href="../np-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li class="right" >
+          <a href="kt_simul.core.components.html" title="kt_simul.core.components"
+             accesskey="N">next</a> |</li>
+        <li class="right" >
+          <a href="kt_simul.core.simul_spindle.html" title="kt_simul.core.simul_spindle"
+             accesskey="P">previous</a> |</li>
+        <li><a href="../index.html">KtSimul 0.1 documentation</a> &raquo;</li>
+          <li><a href="../api.html" >Explore the API</a> &raquo;</li>
+          <li><a href="../core.html" accesskey="U">Main simulation components : <tt class="docutils literal docutils literal docutils literal docutils literal docutils literal docutils literal"><span class="pre">kt_simul.core</span></tt></a> &raquo;</li> 
+      </ul>
+    </div>  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body">
+            
+  <div class="section" id="module-kt_simul.core.spindle_dynamics">
+<span id="kt-simul-core-spindle-dynamics"></span><h1>kt_simul.core.spindle_dynamics<a class="headerlink" href="#module-kt_simul.core.spindle_dynamics" title="Permalink to this headline">¶</a></h1>
+<p>This module defines all the objects considered in the simulation,
+It uses cython used for the computer intensive bits</p>
+<ul class="simple">
+<li>Chromosome, Spb, Spindle, PlugSite are the spindle components</li>
+<li>KinetoDynamics wraps all the simulation internals: forces, vectors,
+and the system of equations.</li>
+</ul>
+<dl class="class">
+<dt id="kt_simul.core.spindle_dynamics.KinetoDynamics">
+<em class="property">class </em><tt class="descclassname">kt_simul.core.spindle_dynamics.</tt><tt class="descname">KinetoDynamics</tt><a class="headerlink" href="#kt_simul.core.spindle_dynamics.KinetoDynamics" title="Permalink to this definition">¶</a></dt>
+<dd><p>This class wraps all the simulation internals.</p>
+<dl class="method">
+<dt id="kt_simul.core.spindle_dynamics.KinetoDynamics.calc_A">
+<tt class="descname">calc_A</tt><big>(</big><big>)</big><a class="headerlink" href="#kt_simul.core.spindle_dynamics.KinetoDynamics.calc_A" title="Permalink to this definition">¶</a></dt>
+<dd><table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Returns:</th><td class="field-body">the matrix containing the linear terms of the equation set <span class="math">\(\mathbf{A}\dot{X} + \mathbf{B}X + C = 0\)</span></td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="method">
+<dt id="kt_simul.core.spindle_dynamics.KinetoDynamics.calc_B">
+<tt class="descname">calc_B</tt><big>(</big><big>)</big><a class="headerlink" href="#kt_simul.core.spindle_dynamics.KinetoDynamics.calc_B" title="Permalink to this definition">¶</a></dt>
+<dd><table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Returns:</th><td class="field-body">the matrix containing the linear terms of the equation set <span class="math">\(\mathbf{A}\dot{X} + \mathbf{B}X + C = 0\)</span></td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="method">
+<dt id="kt_simul.core.spindle_dynamics.KinetoDynamics.calc_C">
+<tt class="descname">calc_C</tt><big>(</big><big>)</big><a class="headerlink" href="#kt_simul.core.spindle_dynamics.KinetoDynamics.calc_C" title="Permalink to this definition">¶</a></dt>
+<dd><table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Returns:</th><td class="field-body">the matrix containing the linear terms of the equation set <span class="math">\(\mathbf{A}\dot{X} + \mathbf{B}X + C = 0\)</span></td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="method">
+<dt id="kt_simul.core.spindle_dynamics.KinetoDynamics.one_step">
+<tt class="descname">one_step</tt><big>(</big><big>)</big><a class="headerlink" href="#kt_simul.core.spindle_dynamics.KinetoDynamics.one_step" title="Permalink to this definition">¶</a></dt>
+<dd><p>Elementary step :</p>
+<ol class="arabic simple">
+<li>Solving the equation for this time point (solve()).</li>
+<li>Updating position according to new speeds (position_update())</li>
+</ol>
+</dd></dl>
+
+</dd></dl>
+
+</div>
+
+
+          </div>
+        </div>
+      </div>
+      <div class="sphinxsidebar">
+        <div class="sphinxsidebarwrapper">
+  <h4>Previous topic</h4>
+  <p class="topless"><a href="kt_simul.core.simul_spindle.html"
+                        title="previous chapter">kt_simul.core.simul_spindle</a></p>
+  <h4>Next topic</h4>
+  <p class="topless"><a href="kt_simul.core.components.html"
+                        title="next chapter">kt_simul.core.components</a></p>
+  <h3>This Page</h3>
+  <ul class="this-page-menu">
+    <li><a href="../_sources/generated/kt_simul.core.spindle_dynamics.txt"
+           rel="nofollow">Show Source</a></li>
+  </ul>
+<div id="searchbox" style="display: none">
+  <h3>Quick search</h3>
+    <form class="search" action="../search.html" method="get">
+      <input type="text" name="q" />
+      <input type="submit" value="Go" />
+      <input type="hidden" name="check_keywords" value="yes" />
+      <input type="hidden" name="area" value="default" />
+    </form>
+    <p class="searchtip" style="font-size: 90%">
+    Enter search terms or a module, class or function name.
+    </p>
+</div>
+<script type="text/javascript">$('#searchbox').show(0);</script>
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="related">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../genindex.html" title="General Index"
+             >index</a></li>
+        <li class="right" >
+          <a href="../py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li class="right" >
+          <a href="../np-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li class="right" >
+          <a href="kt_simul.core.components.html" title="kt_simul.core.components"
+             >next</a> |</li>
+        <li class="right" >
+          <a href="kt_simul.core.simul_spindle.html" title="kt_simul.core.simul_spindle"
+             >previous</a> |</li>
+        <li><a href="../index.html">KtSimul 0.1 documentation</a> &raquo;</li>
+          <li><a href="../api.html" >Explore the API</a> &raquo;</li>
+          <li><a href="../core.html" >Main simulation components : <tt class="docutils literal docutils literal docutils literal docutils literal docutils literal docutils literal"><span class="pre">kt_simul.core</span></tt></a> &raquo;</li> 
+      </ul>
+    </div>
+    <div class="footer">
+        &copy; Copyright 2013, Guillaume Gay.
+      Created using <a href="http://sphinx.pocoo.org/">Sphinx</a> 1.1.3.
+    </div>
+  </body>
+</html>
