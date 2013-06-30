@@ -71,7 +71,7 @@
 <span class="kn">from</span> <span class="nn">kt_simul.core.spindle_dynamics</span> <span class="kn">import</span> <span class="n">KinetoDynamics</span>
 <span class="kn">from</span> <span class="nn">kt_simul.io.xml_handler</span> <span class="kn">import</span> <span class="n">ParamTree</span>
 <span class="kn">from</span> <span class="nn">kt_simul.core</span> <span class="kn">import</span> <span class="n">parameters</span>
-<span class="kn">from</span> <span class="nn">kt_simul.utils.progress</span> <span class="kn">import</span> <span class="n">print_progress</span>
+<span class="kn">from</span> <span class="nn">kt_simul.utils.progress</span> <span class="kn">import</span> <span class="n">pprogress</span>
 <span class="kn">from</span> <span class="nn">kt_simul.utils.format</span> <span class="kn">import</span> <span class="n">pretty_dict</span>
 
 <span class="n">logger</span> <span class="o">=</span> <span class="n">logging</span><span class="o">.</span><span class="n">getLogger</span><span class="p">(</span><span class="n">__name__</span><span class="p">)</span>
@@ -84,6 +84,10 @@
 <span class="n">MEASUREFILE</span> <span class="o">=</span> <span class="n">parameters</span><span class="o">.</span><span class="n">MEASUREFILE</span>
 <span class="n">MEASURETREE</span> <span class="o">=</span> <span class="n">parameters</span><span class="o">.</span><span class="n">MEASURETREE</span>
 <span class="n">MEASURES</span> <span class="o">=</span> <span class="n">parameters</span><span class="o">.</span><span class="n">MEASURES</span>
+
+
+<span class="k">class</span> <span class="nc">SimulationAlreadyDone</span><span class="p">(</span><span class="ne">Exception</span><span class="p">):</span>
+    <span class="k">pass</span>
 
 
 <div class="viewcode-block" id="Metaphase"><a class="viewcode-back" href="../../../generated/kt_simul.core.simul_spindle.html#kt_simul.core.simul_spindle.Metaphase">[docs]</a><span class="k">class</span> <span class="nc">Metaphase</span><span class="p">(</span><span class="nb">object</span><span class="p">):</span>
@@ -218,13 +222,7 @@
                 <span class="n">lines</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">line</span><span class="p">)</span>
         <span class="k">except</span> <span class="ne">AttributeError</span><span class="p">:</span>
             <span class="k">pass</span>
-        <span class="n">lines</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="s">&#39;&#39;</span><span class="p">)</span>
-        <span class="n">lines</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="s">&#39;Observations:&#39;</span><span class="p">)</span>
-        <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">observations</span><span class="o">.</span><span class="n">keys</span><span class="p">())</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">:</span>
-            <span class="k">for</span> <span class="n">line</span> <span class="ow">in</span> <span class="nb">str</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">observations</span><span class="p">)</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="s">&#39;,&#39;</span><span class="p">):</span>
-                <span class="n">lines</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">line</span><span class="p">)</span>
-        <span class="k">else</span><span class="p">:</span>
-            <span class="n">lines</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="s">&#39;Not yet evaluated&#39;</span><span class="p">)</span>
+
         <span class="k">return</span> <span class="s">&#39;</span><span class="se">\n</span><span class="s">&#39;</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">lines</span><span class="p">)</span>
 
 <div class="viewcode-block" id="Metaphase.simul"><a class="viewcode-back" href="../../../generated/kt_simul.core.simul_spindle.html#kt_simul.core.simul_spindle.Metaphase.simul">[docs]</a>    <span class="k">def</span> <span class="nf">simul</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">ablat</span><span class="o">=</span><span class="bp">None</span><span class="p">,</span> <span class="n">ablat_pos</span><span class="o">=</span><span class="mf">0.</span><span class="p">):</span>
@@ -258,7 +256,7 @@
             <span class="n">progress</span> <span class="o">=</span> <span class="nb">int</span><span class="p">((</span><span class="n">time_point</span> <span class="o">*</span> <span class="mf">100.0</span><span class="p">)</span> <span class="o">/</span> <span class="bp">self</span><span class="o">.</span><span class="n">num_steps</span><span class="p">)</span>
 
             <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">verbose</span> <span class="ow">and</span> <span class="n">progress</span> <span class="o">!=</span> <span class="n">bef</span><span class="p">:</span>
-                <span class="n">print_progress</span><span class="p">(</span><span class="nb">int</span><span class="p">(</span><span class="n">progress</span><span class="p">))</span>
+                <span class="n">pprogress</span><span class="p">(</span><span class="nb">int</span><span class="p">(</span><span class="n">progress</span><span class="p">))</span>
                 <span class="n">bef</span> <span class="o">=</span> <span class="n">progress</span>
 
             <span class="c"># Ablation test</span>
@@ -270,7 +268,7 @@
             <span class="c"># Anaphase transition ?</span>
             <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_anaphase_test</span><span class="p">(</span><span class="n">time_point</span><span class="p">):</span>
                 <span class="k">if</span> <span class="ow">not</span> <span class="n">log_anaphase_onset</span><span class="p">:</span>
-                    <span class="n">print_progress</span><span class="p">(</span><span class="o">-</span><span class="mi">1</span><span class="p">)</span>
+                    <span class="n">pprogress</span><span class="p">(</span><span class="o">-</span><span class="mi">1</span><span class="p">)</span>
                     <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">verbose</span><span class="p">:</span>
                         <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s">&quot;Anaphase onset at </span><span class="si">%i</span><span class="s"> / </span><span class="si">%i</span><span class="s">&quot;</span> <span class="o">%</span>
                                    <span class="p">(</span><span class="n">time_point</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">num_steps</span><span class="p">))</span>
@@ -281,7 +279,7 @@
                 <span class="c"># print self.KD.At_mat</span>
 
         <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">verbose</span><span class="p">:</span>
-            <span class="n">print_progress</span><span class="p">(</span><span class="o">-</span><span class="mi">1</span><span class="p">)</span>
+            <span class="n">pprogress</span><span class="p">(</span><span class="o">-</span><span class="mi">1</span><span class="p">)</span>
 
         <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">verbose</span><span class="p">:</span>
             <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s">&#39;Simulation done&#39;</span><span class="p">)</span>
@@ -294,60 +292,6 @@
             <span class="n">ch</span><span class="o">.</span><span class="n">calc_erroneous_history</span><span class="p">()</span>
             <span class="n">ch</span><span class="o">.</span><span class="n">cen_A</span><span class="o">.</span><span class="n">calc_toa</span><span class="p">()</span>
             <span class="n">ch</span><span class="o">.</span><span class="n">cen_B</span><span class="o">.</span><span class="n">calc_toa</span><span class="p">()</span>
-
-    <span class="c"># def evaluate(self, name=None, groups=[],</span>
-    <span class="c">#              debug=False,</span>
-    <span class="c">#              verbose=False,</span>
-    <span class="c">#              draw=False,</span>
-    <span class="c">#              run_all=False):</span>
-    <span class="c">#     &quot;&quot;&quot;</span>
-    <span class="c">#     Passes all the evaluations in kt_simul.analysis.valuations module</span>
-    <span class="c">#     results are stored in the self.observations dictionnary</span>
-
-    <span class="c">#     TODO: most of the code of this method should be moved to</span>
-    <span class="c">#     kt_simul.analysis.evaluations.__init__</span>
-    <span class="c">#     &quot;&quot;&quot;</span>
-    <span class="c">#     if not self.KD.simulation_done:</span>
-    <span class="c">#         logger.info(&quot;No simulation was runned&quot;)</span>
-    <span class="c">#         return False</span>
-
-    <span class="c">#     if not name and verbose:</span>
-    <span class="c">#         logger.info(&quot;Starting evaluations&quot;)</span>
-    <span class="c"># all_evaluations = evaluations.find_evaluations(name=name, groups=groups,</span>
-    <span class="c"># run_all=run_all)</span>
-
-    <span class="c">#     if not all_evaluations:</span>
-    <span class="c">#         if verbose:</span>
-    <span class="c">#             logger.info(&quot;No evaluations found&quot;)</span>
-    <span class="c">#         return False</span>
-
-    <span class="c">#     for evaluation in all_evaluations:</span>
-    <span class="c">#         if verbose:</span>
-    <span class="c">#             logger.info(&quot;Running %s&quot; % evaluation.name)</span>
-    <span class="c">#         if debug:</span>
-    <span class="c">#             result = evaluation().run(self.KD, draw)</span>
-    <span class="c">#             if verbose:</span>
-    <span class="c">#                 logger.info(&quot;%s done&quot; % evaluation.name)</span>
-    <span class="c">#         else:</span>
-    <span class="c">#             try:</span>
-    <span class="c">#                 result = evaluation().run(self.KD, draw)</span>
-    <span class="c">#                 if verbose:</span>
-    <span class="c">#                     logger.info(&quot;%s done&quot; % evaluation.name)</span>
-    <span class="c">#             except Exception as e:</span>
-    <span class="c">#                 result = np.nan</span>
-    <span class="c">#                 if verbose:</span>
-    <span class="c"># logger.info(&quot;%s returns errors : %s&quot; % (evaluation.name, e))</span>
-
-    <span class="c">#         if name and not run_all:</span>
-    <span class="c">#             return result</span>
-    <span class="c">#         else:</span>
-    <span class="c">#             current_name = evaluation.name.replace(&quot; &quot;, &quot;_&quot;)</span>
-    <span class="c">#             self.observations[current_name] = result</span>
-
-    <span class="c">#     if verbose:</span>
-    <span class="c">#         logger.info(&quot;All evaluations processed&quot;)</span>
-
-    <span class="c">#     return self.observations</span>
 </div>
 <div class="viewcode-block" id="Metaphase.get_report"><a class="viewcode-back" href="../../../generated/kt_simul.core.simul_spindle.html#kt_simul.core.simul_spindle.Metaphase.get_report">[docs]</a>    <span class="k">def</span> <span class="nf">get_report</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">time</span><span class="o">=</span><span class="mi">0</span><span class="p">):</span>
         <span class="sd">&quot;&quot;&quot;</span>
@@ -497,9 +441,70 @@
                 <span class="k">return</span> <span class="bp">True</span>
         <span class="k">return</span> <span class="bp">True</span>
 
-</div>
-<span class="k">class</span> <span class="nc">SimulationAlreadyDone</span><span class="p">(</span><span class="ne">Exception</span><span class="p">):</span>
-    <span class="k">pass</span>
+<div class="viewcode-block" id="Metaphase.show"><a class="viewcode-back" href="../../../generated/kt_simul.core.simul_spindle.html#kt_simul.core.simul_spindle.Metaphase.show">[docs]</a>    <span class="k">def</span> <span class="nf">show</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Quickly show kymograph of current simulation.</span>
+<span class="sd">        Matplotlib is required.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+
+        <span class="kn">import</span> <span class="nn">matplotlib.pyplot</span> <span class="kn">as</span> <span class="nn">plt</span>
+
+        <span class="n">duration</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">KD</span><span class="o">.</span><span class="n">duration</span>
+        <span class="n">dt</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">KD</span><span class="o">.</span><span class="n">dt</span>
+        <span class="n">steps</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">KD</span><span class="o">.</span><span class="n">num_steps</span>
+        <span class="n">anaphase</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">KD</span><span class="o">.</span><span class="n">params</span><span class="p">[</span><span class="s">&#39;t_A&#39;</span><span class="p">]</span>
+        <span class="n">times</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">arange</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="n">duration</span><span class="p">,</span> <span class="n">dt</span><span class="p">)</span>
+        <span class="n">spbA</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">KD</span><span class="o">.</span><span class="n">spbL</span><span class="o">.</span><span class="n">traj</span>
+        <span class="n">spbB</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">KD</span><span class="o">.</span><span class="n">spbR</span><span class="o">.</span><span class="n">traj</span>
+        <span class="n">kts</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">KD</span><span class="o">.</span><span class="n">chromosomes</span>
+
+        <span class="n">fig</span> <span class="o">=</span> <span class="n">plt</span><span class="o">.</span><span class="n">figure</span><span class="p">(</span><span class="n">figsize</span><span class="o">=</span><span class="p">(</span><span class="mi">14</span><span class="p">,</span><span class="mi">8</span><span class="p">))</span>
+
+        <span class="n">tot</span> <span class="o">=</span> <span class="mi">5</span>
+        <span class="n">ax1</span> <span class="o">=</span> <span class="n">plt</span><span class="o">.</span><span class="n">subplot2grid</span><span class="p">((</span><span class="n">tot</span><span class="p">,</span> <span class="mi">1</span><span class="p">),</span> <span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">),</span> <span class="n">rowspan</span><span class="o">=</span><span class="mi">1</span><span class="p">)</span>
+        <span class="n">ax2</span> <span class="o">=</span> <span class="n">plt</span><span class="o">.</span><span class="n">subplot2grid</span><span class="p">((</span><span class="n">tot</span><span class="p">,</span> <span class="mi">1</span><span class="p">),</span> <span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="mi">0</span><span class="p">),</span> <span class="n">rowspan</span><span class="o">=</span><span class="mi">3</span><span class="p">,</span> <span class="n">sharex</span><span class="o">=</span><span class="n">ax1</span><span class="p">)</span>
+        <span class="n">ax3</span> <span class="o">=</span> <span class="n">plt</span><span class="o">.</span><span class="n">subplot2grid</span><span class="p">((</span><span class="n">tot</span><span class="p">,</span> <span class="mi">1</span><span class="p">),</span> <span class="p">(</span><span class="mi">4</span><span class="p">,</span> <span class="mi">0</span><span class="p">),</span> <span class="n">rowspan</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span> <span class="n">sharex</span><span class="o">=</span><span class="n">ax1</span><span class="p">)</span>
+
+        <span class="n">colors</span> <span class="o">=</span> <span class="p">[</span><span class="s">&quot;red&quot;</span><span class="p">,</span>
+                  <span class="s">&quot;green&quot;</span><span class="p">,</span>
+                  <span class="s">&quot;blue&quot;</span><span class="p">]</span>
+
+        <span class="c"># Draw kymo</span>
+        <span class="n">ax2</span><span class="o">.</span><span class="n">plot</span><span class="p">(</span><span class="n">times</span><span class="p">,</span> <span class="n">spbA</span><span class="p">,</span> <span class="n">color</span><span class="o">=</span><span class="s">&#39;black&#39;</span><span class="p">)</span>
+        <span class="n">ax2</span><span class="o">.</span><span class="n">plot</span><span class="p">(</span><span class="n">times</span><span class="p">,</span> <span class="n">spbB</span><span class="p">,</span> <span class="n">color</span><span class="o">=</span><span class="s">&#39;black&#39;</span><span class="p">)</span>
+
+        <span class="k">for</span> <span class="n">color</span><span class="p">,</span> <span class="n">kt</span> <span class="ow">in</span> <span class="nb">zip</span><span class="p">(</span><span class="n">colors</span><span class="p">,</span> <span class="n">kts</span><span class="p">):</span>
+            <span class="n">ax2</span><span class="o">.</span><span class="n">plot</span><span class="p">(</span><span class="n">times</span><span class="p">,</span> <span class="n">kt</span><span class="o">.</span><span class="n">cen_A</span><span class="o">.</span><span class="n">traj</span><span class="p">,</span> <span class="n">color</span><span class="o">=</span><span class="n">color</span><span class="p">,</span> <span class="n">alpha</span><span class="o">=</span><span class="mf">0.5</span><span class="p">)</span>
+            <span class="n">ax2</span><span class="o">.</span><span class="n">plot</span><span class="p">(</span><span class="n">times</span><span class="p">,</span> <span class="n">kt</span><span class="o">.</span><span class="n">cen_B</span><span class="o">.</span><span class="n">traj</span><span class="p">,</span> <span class="n">color</span><span class="o">=</span><span class="n">color</span><span class="p">,</span> <span class="n">alpha</span><span class="o">=</span><span class="mf">0.5</span><span class="p">)</span>
+        <span class="n">ax2</span><span class="o">.</span><span class="n">grid</span><span class="p">()</span>
+
+        <span class="k">for</span> <span class="n">lab</span> <span class="ow">in</span> <span class="n">ax1</span><span class="o">.</span><span class="n">xaxis</span><span class="o">.</span><span class="n">get_majorticklabels</span><span class="p">():</span>
+            <span class="n">lab</span><span class="o">.</span><span class="n">set_visible</span><span class="p">(</span><span class="bp">False</span><span class="p">)</span>
+        <span class="k">for</span> <span class="n">lab</span> <span class="ow">in</span> <span class="n">ax2</span><span class="o">.</span><span class="n">xaxis</span><span class="o">.</span><span class="n">get_majorticklabels</span><span class="p">():</span>
+            <span class="n">lab</span><span class="o">.</span><span class="n">set_visible</span><span class="p">(</span><span class="bp">False</span><span class="p">)</span>
+
+        <span class="n">ax2</span><span class="o">.</span><span class="n">axvline</span><span class="p">(</span><span class="n">anaphase</span><span class="p">,</span> <span class="n">color</span><span class="o">=</span><span class="s">&#39;black&#39;</span><span class="p">)</span>
+
+        <span class="n">ax1</span><span class="o">.</span><span class="n">grid</span><span class="p">()</span>
+        <span class="n">ax3</span><span class="o">.</span><span class="n">grid</span><span class="p">()</span>
+
+        <span class="k">for</span> <span class="n">color</span><span class="p">,</span> <span class="n">kt</span> <span class="ow">in</span> <span class="nb">zip</span><span class="p">(</span><span class="n">colors</span><span class="p">,</span> <span class="n">kts</span><span class="p">):</span>
+            <span class="n">correctA</span> <span class="o">=</span> <span class="n">kt</span><span class="o">.</span><span class="n">correct_history</span><span class="o">.</span><span class="n">T</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span>
+            <span class="n">correctB</span> <span class="o">=</span> <span class="n">kt</span><span class="o">.</span><span class="n">correct_history</span><span class="o">.</span><span class="n">T</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
+            <span class="n">errA</span> <span class="o">=</span> <span class="n">kt</span><span class="o">.</span><span class="n">erroneous_history</span><span class="o">.</span><span class="n">T</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span>
+            <span class="n">errB</span> <span class="o">=</span> <span class="n">kt</span><span class="o">.</span><span class="n">erroneous_history</span><span class="o">.</span><span class="n">T</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
+
+            <span class="n">ax3</span><span class="o">.</span><span class="n">plot</span><span class="p">(</span><span class="n">times</span><span class="p">,</span> <span class="n">correctA</span><span class="p">,</span> <span class="n">color</span><span class="o">=</span><span class="n">color</span><span class="p">,</span> <span class="n">alpha</span><span class="o">=</span><span class="mf">0.5</span><span class="p">)</span>
+            <span class="n">ax3</span><span class="o">.</span><span class="n">plot</span><span class="p">(</span><span class="n">times</span><span class="p">,</span> <span class="n">errA</span><span class="p">,</span> <span class="n">color</span><span class="o">=</span><span class="n">color</span><span class="p">,</span> <span class="n">alpha</span><span class="o">=</span><span class="mf">0.5</span><span class="p">)</span>
+
+            <span class="n">ax1</span><span class="o">.</span><span class="n">plot</span><span class="p">(</span><span class="n">times</span><span class="p">,</span> <span class="n">correctB</span><span class="p">,</span> <span class="n">color</span><span class="o">=</span><span class="n">color</span><span class="p">,</span> <span class="n">alpha</span><span class="o">=</span><span class="mf">0.5</span><span class="p">)</span>
+            <span class="n">ax1</span><span class="o">.</span><span class="n">plot</span><span class="p">(</span><span class="n">times</span><span class="p">,</span> <span class="n">errB</span><span class="p">,</span> <span class="n">color</span><span class="o">=</span><span class="n">color</span><span class="p">,</span> <span class="n">alpha</span><span class="o">=</span><span class="mf">0.5</span><span class="p">)</span>
+
+        <span class="n">ax3</span><span class="o">.</span><span class="n">set_xlabel</span><span class="p">(</span><span class="s">&#39;Time (s)&#39;</span><span class="p">)</span>
+        <span class="n">ax2</span><span class="o">.</span><span class="n">set_ylabel</span><span class="p">(</span><span class="s">&#39;Distance from center (um)&#39;</span><span class="p">)</span>
+
+        <span class="n">ax1</span><span class="o">.</span><span class="n">set_yticks</span><span class="p">(</span><span class="nb">range</span><span class="p">(</span><span class="mi">5</span><span class="p">))</span>
+        <span class="n">ax3</span><span class="o">.</span><span class="n">set_yticks</span><span class="p">(</span><span class="nb">range</span><span class="p">(</span><span class="mi">5</span><span class="p">))</span></div></div>
 </pre></div>
 
           </div>

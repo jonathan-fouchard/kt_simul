@@ -58,10 +58,11 @@
 <span class="sd">Handler for the parameters xml files -- to allow phase space exploration</span>
 <span class="sd">&quot;&quot;&quot;</span>
 
-<span class="kn">import</span> <span class="nn">numpy</span> <span class="kn">as</span> <span class="nn">np</span>
 <span class="kn">import</span> <span class="nn">StringIO</span>
-
 <span class="kn">from</span> <span class="nn">xml.etree.ElementTree</span> <span class="kn">import</span> <span class="n">parse</span><span class="p">,</span> <span class="n">tostring</span>
+
+<span class="kn">import</span> <span class="nn">numpy</span> <span class="kn">as</span> <span class="nn">np</span>
+<span class="kn">import</span> <span class="nn">pandas</span> <span class="kn">as</span> <span class="nn">pd</span>
 
 <span class="c"># Those strings should be respected in the xml file</span>
 <span class="n">SPRING_UNIT</span> <span class="o">=</span> <span class="s">u&#39;pN/µm&#39;</span>
@@ -214,6 +215,31 @@
         <span class="n">f</span> <span class="o">=</span> <span class="nb">open</span><span class="p">(</span><span class="n">path</span><span class="p">,</span> <span class="s">&quot;w&quot;</span><span class="p">)</span>
         <span class="n">f</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="n">tostring</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">root</span><span class="p">))</span>
         <span class="n">f</span><span class="o">.</span><span class="n">close</span><span class="p">()</span>
+</div>
+<div class="viewcode-block" id="ParamTree.to_df"><a class="viewcode-back" href="../../../generated/kt_simul.io.xml_handler.html#kt_simul.io.xml_handler.ParamTree.to_df">[docs]</a>    <span class="k">def</span> <span class="nf">to_df</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Convert self.tree to :class:`pandas.DataFrame`</span>
+
+<span class="sd">        Returns</span>
+<span class="sd">        -------</span>
+<span class="sd">        :class:`pandas.DataFrame`</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+
+        <span class="n">attributs</span> <span class="o">=</span> <span class="p">{</span><span class="s">&#39;name&#39;</span><span class="p">:</span> <span class="p">[],</span> <span class="s">&#39;value&#39;</span><span class="p">:</span> <span class="p">[],</span> <span class="s">&#39;min&#39;</span><span class="p">:</span> <span class="p">[],</span> <span class="s">&#39;max&#39;</span><span class="p">:</span> <span class="p">[],</span> <span class="s">&#39;step&#39;</span><span class="p">:</span> <span class="p">[]}</span>
+        <span class="n">tags</span> <span class="o">=</span> <span class="p">{</span><span class="s">&#39;unit&#39;</span><span class="p">:</span> <span class="p">[],</span> <span class="s">&#39;description&#39;</span><span class="p">:</span> <span class="p">[]}</span>
+
+        <span class="k">for</span> <span class="n">el</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">root</span><span class="o">.</span><span class="n">findall</span><span class="p">(</span><span class="s">&quot;param&quot;</span><span class="p">):</span>
+
+            <span class="k">for</span> <span class="n">name</span> <span class="ow">in</span> <span class="n">attributs</span><span class="p">:</span>
+                <span class="n">attributs</span><span class="p">[</span><span class="n">name</span><span class="p">]</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">el</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">name</span><span class="p">))</span>
+            <span class="k">for</span> <span class="n">name</span> <span class="ow">in</span> <span class="n">tags</span><span class="p">:</span>
+                <span class="n">tags</span><span class="p">[</span><span class="n">name</span><span class="p">]</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">el</span><span class="o">.</span><span class="n">find</span><span class="p">(</span><span class="n">name</span><span class="p">)</span><span class="o">.</span><span class="n">text</span><span class="p">)</span>
+
+        <span class="n">attributs</span><span class="o">.</span><span class="n">update</span><span class="p">(</span><span class="n">tags</span><span class="p">)</span>
+        <span class="n">df</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="o">.</span><span class="n">from_dict</span><span class="p">(</span><span class="n">attributs</span><span class="p">)</span>
+        <span class="n">cols_ordered</span> <span class="o">=</span> <span class="p">[</span><span class="s">&#39;name&#39;</span><span class="p">,</span> <span class="s">&#39;value&#39;</span><span class="p">,</span> <span class="s">&#39;unit&#39;</span><span class="p">,</span> <span class="s">&#39;description&#39;</span><span class="p">,</span> <span class="s">&#39;min&#39;</span><span class="p">,</span> <span class="s">&#39;max&#39;</span><span class="p">,</span> <span class="s">&#39;step&#39;</span><span class="p">]</span>
+        <span class="n">df</span> <span class="o">=</span> <span class="n">df</span><span class="o">.</span><span class="n">reindex_axis</span><span class="p">(</span><span class="n">cols_ordered</span><span class="p">,</span> <span class="n">axis</span><span class="o">=</span><span class="mi">1</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">df</span>
 
 </div></div>
 <span class="k">class</span> <span class="nc">ResultTree</span><span class="p">(</span><span class="n">ParamTree</span><span class="p">):</span>

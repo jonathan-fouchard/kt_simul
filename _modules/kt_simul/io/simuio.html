@@ -61,10 +61,10 @@
 <span class="kn">import</span> <span class="nn">logging</span>
 <span class="kn">import</span> <span class="nn">StringIO</span>
 <span class="kn">import</span> <span class="nn">zipfile</span>
+<span class="kn">import</span> <span class="nn">xml.etree.ElementTree</span> <span class="kn">as</span> <span class="nn">ET</span>
 
 <span class="kn">import</span> <span class="nn">numpy</span> <span class="kn">as</span> <span class="nn">np</span>
-
-<span class="kn">from</span> <span class="nn">xml.etree.ElementTree</span> <span class="kn">import</span> <span class="n">Element</span><span class="p">,</span> <span class="n">SubElement</span><span class="p">,</span> <span class="n">tostring</span>
+<span class="kn">import</span> <span class="nn">pandas</span> <span class="kn">as</span> <span class="nn">pd</span>
 
 <span class="kn">from</span> <span class="nn">kt_simul.core.spindle_dynamics</span> <span class="kn">import</span> <span class="n">KinetoDynamics</span>
 <span class="kn">from</span> <span class="nn">kt_simul.core.simul_spindle</span> <span class="kn">import</span> <span class="n">Metaphase</span>
@@ -87,158 +87,150 @@
         <span class="k">if</span> <span class="n">meta_instance</span><span class="p">:</span>
             <span class="bp">self</span><span class="o">.</span><span class="n">meta</span> <span class="o">=</span> <span class="n">meta_instance</span>
             <span class="bp">self</span><span class="o">.</span><span class="n">KD</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">meta</span><span class="o">.</span><span class="n">KD</span>
-            <span class="bp">self</span><span class="o">.</span><span class="n">timelapse</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">meta</span><span class="o">.</span><span class="n">timelapse</span>
-            <span class="bp">self</span><span class="o">.</span><span class="n">num_steps</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">meta</span><span class="o">.</span><span class="n">num_steps</span>
             <span class="bp">self</span><span class="o">.</span><span class="n">paramtree</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">meta</span><span class="o">.</span><span class="n">paramtree</span>
             <span class="bp">self</span><span class="o">.</span><span class="n">measuretree</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">meta</span><span class="o">.</span><span class="n">measuretree</span>
-            <span class="bp">self</span><span class="o">.</span><span class="n">observations</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">meta</span><span class="o">.</span><span class="n">observations</span>
 
-<div class="viewcode-block" id="SimuIO.save"><a class="viewcode-back" href="../../../generated/kt_simul.io.simuio.html#kt_simul.io.simuio.SimuIO.save">[docs]</a>    <span class="k">def</span> <span class="nf">save</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">simufname</span><span class="o">=</span><span class="s">&quot;results.zip&quot;</span><span class="p">,</span> <span class="n">verbose</span><span class="o">=</span><span class="bp">False</span><span class="p">):</span>
+<div class="viewcode-block" id="SimuIO.save"><a class="viewcode-back" href="../../../generated/kt_simul.io.simuio.html#kt_simul.io.simuio.SimuIO.save">[docs]</a>    <span class="k">def</span> <span class="nf">save</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">simufname</span><span class="p">,</span> <span class="n">metadata</span><span class="o">=</span><span class="bp">None</span><span class="p">,</span> <span class="n">verbose</span><span class="o">=</span><span class="bp">False</span><span class="p">):</span>
         <span class="sd">&quot;&quot;&quot;</span>
-<span class="sd">        Saves the results of the simulation in two files</span>
-<span class="sd">        with the parameters, measures and observations in one file</span>
-<span class="sd">        and the trajectories in the other.</span>
+<span class="sd">        Save :class:`~kt_simul.core.simul_spindle.Metaphase` instance to</span>
+<span class="sd">        HDF5 file. Each of the following element will be stored via</span>
+<span class="sd">        :class:`pandas.DataFrame` or :class:`pandas.Series` object.</span>
 
 <span class="sd">        Parameters</span>
 <span class="sd">        ----------</span>
-<span class="sd">        simufname : string</span>
-<span class="sd">            A ZIP file which contains results.xml and data.npy:</span>
-<span class="sd">                - results.xml : name of the xml file where parameters and</span>
-<span class="sd">                                observations will be written</span>
-
-<span class="sd">                - data.npy : data are stored in numpy&#39;s binary format</span>
+<span class="sd">        simufname : str</span>
+<span class="sd">            Filename to save HDF5 file.</span>
+<span class="sd">        metadata : dict</span>
+<span class="sd">            Will be stored as a :class:`pandas.Series`. (Not implemented)</span>
+<span class="sd">        verbose : bool</span>
+<span class="sd">            Enable verbose mode.</span>
 
 <span class="sd">        &quot;&quot;&quot;</span>
 
+        <span class="n">KD</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">meta</span><span class="o">.</span><span class="n">KD</span>
+        <span class="n">paramtree</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">meta</span><span class="o">.</span><span class="n">paramtree</span>
+        <span class="n">measuretree</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">meta</span><span class="o">.</span><span class="n">measuretree</span>
+        <span class="n">timelapse</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">meta</span><span class="o">.</span><span class="n">timelapse</span>
         <span class="n">chromosomes</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">KD</span><span class="o">.</span><span class="n">chromosomes</span>
 
-        <span class="c"># Store matrices insisde wavelist</span>
-        <span class="n">wavelist</span> <span class="o">=</span> <span class="p">[]</span>
+        <span class="n">time_index</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">MultiIndex</span><span class="o">.</span><span class="n">from_arrays</span><span class="p">([</span><span class="n">timelapse</span><span class="p">],</span> <span class="n">names</span><span class="o">=</span><span class="p">[</span><span class="s">&#39;t&#39;</span><span class="p">])</span>
 
-        <span class="n">xmlout</span> <span class="o">=</span> <span class="s">&quot;&quot;</span>
-        <span class="n">xmlout</span> <span class="o">+=</span> <span class="s">&#39;&lt;?xml version=&quot;1.0&quot;?&gt;</span><span class="se">\n</span><span class="s">&#39;</span>
-        <span class="n">today</span> <span class="o">=</span> <span class="n">time</span><span class="o">.</span><span class="n">asctime</span><span class="p">()</span>
-        <span class="n">experiment</span> <span class="o">=</span> <span class="n">Element</span><span class="p">(</span><span class="s">&quot;experiment&quot;</span><span class="p">,</span> <span class="n">date</span><span class="o">=</span><span class="n">today</span><span class="p">)</span>
-        <span class="n">experiment</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">paramtree</span><span class="o">.</span><span class="n">root</span><span class="p">)</span>
-        <span class="n">experiment</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">measuretree</span><span class="o">.</span><span class="n">root</span><span class="p">)</span>
+        <span class="n">df_to_save</span> <span class="o">=</span> <span class="p">[</span><span class="s">&#39;params&#39;</span><span class="p">,</span> <span class="s">&#39;measures&#39;</span><span class="p">,</span> <span class="s">&#39;spbs&#39;</span><span class="p">,</span> <span class="s">&#39;kts&#39;</span><span class="p">,</span> <span class="s">&#39;plug_sites&#39;</span><span class="p">]</span>
 
-        <span class="c"># right SPB</span>
-        <span class="n">spbR</span> <span class="o">=</span> <span class="n">SubElement</span><span class="p">(</span><span class="n">experiment</span><span class="p">,</span> <span class="s">&quot;trajectory&quot;</span><span class="p">,</span> <span class="n">name</span><span class="o">=</span><span class="s">&quot;rightspb&quot;</span><span class="p">,</span>
-                          <span class="n">column</span><span class="o">=</span><span class="s">&#39;0&#39;</span><span class="p">,</span> <span class="n">units</span><span class="o">=</span><span class="s">&#39;mu m&#39;</span><span class="p">)</span>
-        <span class="n">SubElement</span><span class="p">(</span><span class="n">spbR</span><span class="p">,</span> <span class="s">&quot;description&quot;</span><span class="p">)</span><span class="o">.</span><span class="n">text</span> <span class="o">=</span> <span class="s">&quot;right spb trajectory&quot;</span>
-        <span class="n">spbRtraj</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">KD</span><span class="o">.</span><span class="n">spbR</span><span class="o">.</span><span class="n">traj</span><span class="p">)</span>
-        <span class="n">wavelist</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">spbRtraj</span><span class="p">)</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        spbs DataFrame look like that:</span>
 
-        <span class="c"># left SPB</span>
-        <span class="n">spbL</span> <span class="o">=</span> <span class="n">SubElement</span><span class="p">(</span><span class="n">experiment</span><span class="p">,</span> <span class="s">&quot;trajectory&quot;</span><span class="p">,</span> <span class="n">name</span><span class="o">=</span><span class="s">&quot;leftspb&quot;</span><span class="p">,</span>
-                          <span class="n">column</span><span class="o">=</span><span class="s">&#39;1&#39;</span><span class="p">,</span> <span class="n">units</span><span class="o">=</span><span class="s">&#39;mu m&#39;</span><span class="p">)</span>
-        <span class="n">SubElement</span><span class="p">(</span><span class="n">spbL</span><span class="p">,</span> <span class="s">&quot;description&quot;</span><span class="p">)</span><span class="o">.</span><span class="n">text</span> <span class="o">=</span> <span class="s">&quot;left spb trajectory&quot;</span>
-        <span class="n">spbLtraj</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">KD</span><span class="o">.</span><span class="n">spbL</span><span class="o">.</span><span class="n">traj</span><span class="p">)</span>
-        <span class="n">wavelist</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">spbLtraj</span><span class="p">)</span>
+<span class="sd">                               x</span>
+<span class="sd">        t   label side</span>
+<span class="sd">        0.0 spb   A     0.150000</span>
+<span class="sd">            spbL  B    -0.150000</span>
+<span class="sd">        0.5 spb   A     0.154235</span>
+<span class="sd">            spbL  B    -0.154235</span>
+<span class="sd">        1.0 spb   A     0.158469</span>
+<span class="sd">            spbL  B    -0.158469</span>
+<span class="sd">        1.5 spb   A     0.162702</span>
+<span class="sd">            spbL  B    -0.162702</span>
+<span class="sd">        2.0 spb   A     0.166934</span>
+<span class="sd">            spbL  B    -0.166934</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">spbR</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">(</span><span class="n">KD</span><span class="o">.</span><span class="n">spbR</span><span class="o">.</span><span class="n">traj</span><span class="p">,</span> <span class="n">columns</span><span class="o">=</span><span class="p">[</span><span class="s">&#39;x&#39;</span><span class="p">],</span> <span class="n">index</span><span class="o">=</span><span class="n">time_index</span><span class="p">)</span>
+        <span class="n">spbL</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">(</span><span class="n">KD</span><span class="o">.</span><span class="n">spbL</span><span class="o">.</span><span class="n">traj</span><span class="p">,</span> <span class="n">columns</span><span class="o">=</span><span class="p">[</span><span class="s">&#39;x&#39;</span><span class="p">],</span><span class="n">index</span><span class="o">=</span><span class="n">time_index</span><span class="p">)</span>
 
-        <span class="n">col_num</span> <span class="o">=</span> <span class="mi">2</span>
-        <span class="c"># chromosomes</span>
-        <span class="k">for</span> <span class="n">n</span><span class="p">,</span> <span class="n">ch</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="n">chromosomes</span><span class="p">):</span>
-            <span class="n">rch</span> <span class="o">=</span> <span class="n">SubElement</span><span class="p">(</span><span class="n">experiment</span><span class="p">,</span> <span class="s">&quot;trajectory&quot;</span><span class="p">,</span>
-                            <span class="n">name</span><span class="o">=</span><span class="s">&quot;centromereA&quot;</span><span class="p">,</span>
-                            <span class="n">index</span><span class="o">=</span><span class="nb">str</span><span class="p">(</span><span class="n">n</span><span class="p">),</span>
-                            <span class="n">column</span><span class="o">=</span><span class="nb">str</span><span class="p">(</span><span class="n">col_num</span><span class="p">),</span>
-                            <span class="n">units</span><span class="o">=</span><span class="s">&#39;mu m&#39;</span><span class="p">)</span>
-            <span class="n">text</span> <span class="o">=</span> <span class="s">&quot;chromosome </span><span class="si">%i</span><span class="s"> centromere A trajectory&quot;</span> <span class="o">%</span> <span class="n">n</span>
-            <span class="n">SubElement</span><span class="p">(</span><span class="n">rch</span><span class="p">,</span> <span class="s">&quot;description&quot;</span><span class="p">)</span><span class="o">.</span><span class="n">text</span> <span class="o">=</span> <span class="n">text</span>
-            <span class="n">wavelist</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">ch</span><span class="o">.</span><span class="n">cen_A</span><span class="o">.</span><span class="n">traj</span><span class="p">)</span>
-            <span class="n">col_num</span> <span class="o">+=</span> <span class="mi">1</span>
+        <span class="n">spbs</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">concat</span><span class="p">({(</span><span class="s">&#39;spb&#39;</span><span class="p">,</span> <span class="s">&#39;A&#39;</span><span class="p">):</span> <span class="n">spbR</span><span class="p">,</span> <span class="p">(</span><span class="s">&#39;spb&#39;</span><span class="p">,</span> <span class="s">&#39;B&#39;</span><span class="p">):</span> <span class="n">spbL</span><span class="p">},</span> <span class="n">names</span><span class="o">=</span><span class="p">[</span><span class="s">&#39;label&#39;</span><span class="p">,</span> <span class="s">&#39;side&#39;</span><span class="p">])</span>
+        <span class="n">spbs</span> <span class="o">=</span> <span class="n">spbs</span><span class="o">.</span><span class="n">reorder_levels</span><span class="p">([</span><span class="mi">2</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">1</span><span class="p">])</span><span class="o">.</span><span class="n">sort</span><span class="p">()</span>
 
-            <span class="n">SubElement</span><span class="p">(</span><span class="n">experiment</span><span class="p">,</span> <span class="s">&quot;numbercorrect&quot;</span><span class="p">,</span> <span class="n">name</span><span class="o">=</span><span class="s">&quot;centromereA&quot;</span><span class="p">,</span>
-                       <span class="n">index</span><span class="o">=</span><span class="nb">str</span><span class="p">(</span><span class="n">n</span><span class="p">),</span> <span class="n">column</span><span class="o">=</span><span class="nb">str</span><span class="p">(</span><span class="n">col_num</span><span class="p">))</span>
-            <span class="n">wavelist</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">ch</span><span class="o">.</span><span class="n">correct_history</span><span class="p">[:,</span> <span class="mi">0</span><span class="p">])</span>
-            <span class="n">col_num</span> <span class="o">+=</span> <span class="mi">1</span>
-            <span class="n">SubElement</span><span class="p">(</span><span class="n">experiment</span><span class="p">,</span> <span class="s">&quot;numbererroneous&quot;</span><span class="p">,</span>
-                       <span class="n">name</span><span class="o">=</span><span class="s">&quot;centromereA&quot;</span><span class="p">,</span> <span class="n">index</span><span class="o">=</span><span class="nb">str</span><span class="p">(</span><span class="n">n</span><span class="p">),</span>
-                       <span class="n">column</span><span class="o">=</span><span class="nb">str</span><span class="p">(</span><span class="n">col_num</span><span class="p">))</span>
-            <span class="n">wavelist</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">ch</span><span class="o">.</span><span class="n">erroneous_history</span><span class="p">[:,</span> <span class="mi">0</span><span class="p">])</span>
-            <span class="n">col_num</span> <span class="o">+=</span> <span class="mi">1</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        kts DataFrame look like that:</span>
 
-            <span class="n">lch</span> <span class="o">=</span> <span class="n">SubElement</span><span class="p">(</span><span class="n">experiment</span><span class="p">,</span> <span class="s">&quot;trajectory&quot;</span><span class="p">,</span> <span class="n">index</span><span class="o">=</span><span class="nb">str</span><span class="p">(</span><span class="n">n</span><span class="p">),</span>
-                             <span class="n">column</span><span class="o">=</span><span class="nb">str</span><span class="p">(</span><span class="n">col_num</span><span class="p">),</span> <span class="n">units</span><span class="o">=</span><span class="s">&#39;mu m&#39;</span><span class="p">)</span>
-            <span class="n">text</span> <span class="o">=</span> <span class="s">&quot;chromosome </span><span class="si">%s</span><span class="s"> left kinetochore trajectory&quot;</span> <span class="o">%</span> <span class="n">n</span>
-            <span class="n">SubElement</span><span class="p">(</span><span class="n">lch</span><span class="p">,</span> <span class="s">&quot;description&quot;</span><span class="p">)</span><span class="o">.</span><span class="n">text</span> <span class="o">=</span> <span class="n">text</span>
-            <span class="n">wavelist</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="n">ch</span><span class="o">.</span><span class="n">cen_B</span><span class="o">.</span><span class="n">traj</span><span class="p">))</span>
-            <span class="n">col_num</span> <span class="o">+=</span> <span class="mi">1</span>
-            <span class="n">SubElement</span><span class="p">(</span><span class="n">experiment</span><span class="p">,</span> <span class="s">&quot;numbercorrect&quot;</span><span class="p">,</span> <span class="n">name</span><span class="o">=</span><span class="s">&quot;centromereB&quot;</span><span class="p">,</span>
-                       <span class="n">index</span><span class="o">=</span><span class="nb">str</span><span class="p">(</span><span class="n">n</span><span class="p">),</span> <span class="n">column</span><span class="o">=</span><span class="nb">str</span><span class="p">(</span><span class="n">col_num</span><span class="p">))</span>
-            <span class="n">wavelist</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">ch</span><span class="o">.</span><span class="n">correct_history</span><span class="p">[:,</span> <span class="mi">1</span><span class="p">])</span>
-            <span class="n">col_num</span> <span class="o">+=</span> <span class="mi">1</span>
+<span class="sd">                                  x</span>
+<span class="sd">        t   id label side</span>
+<span class="sd">        0.0 0  kt    A    -0.077064</span>
+<span class="sd">                     B     0.022936</span>
+<span class="sd">            1  kt    A    -0.037428</span>
+<span class="sd">                     B     0.062572</span>
+<span class="sd">            2  kt    A    -0.136443</span>
+<span class="sd">                     B    -0.036443</span>
+<span class="sd">        0.5 0  kt    A    -0.077004</span>
+<span class="sd">                     B     0.021358</span>
+<span class="sd">            1  kt    A    -0.038169</span>
+<span class="sd">                     B     0.062300</span>
+<span class="sd">            2  kt    A    -0.133598</span>
+<span class="sd">                     B    -0.035392</span>
+<span class="sd">        1.0 0  kt    A    -0.077090</span>
+<span class="sd">                     B     0.019869</span>
+<span class="sd">            1  kt    A    -0.038920</span>
+<span class="sd">                     B     0.062042</span>
+<span class="sd">            2  kt    A    -0.130846</span>
+<span class="sd">                     B    -0.034284</span>
 
-            <span class="n">SubElement</span><span class="p">(</span><span class="n">experiment</span><span class="p">,</span> <span class="s">&quot;numbererroneous&quot;</span><span class="p">,</span> <span class="n">name</span><span class="o">=</span><span class="s">&quot;centromereB&quot;</span><span class="p">,</span>
-                       <span class="n">index</span><span class="o">=</span><span class="nb">str</span><span class="p">(</span><span class="n">n</span><span class="p">),</span> <span class="n">column</span><span class="o">=</span><span class="nb">str</span><span class="p">(</span><span class="n">col_num</span><span class="p">))</span>
-            <span class="n">wavelist</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">ch</span><span class="o">.</span><span class="n">erroneous_history</span><span class="p">[:,</span> <span class="mi">1</span><span class="p">])</span>
-            <span class="n">col_num</span> <span class="o">+=</span> <span class="mi">1</span>
+<span class="sd">        plug_sites DataFrame looks like that:</span>
 
-            <span class="c">#Plug Sites</span>
-            <span class="k">for</span> <span class="n">m</span><span class="p">,</span> <span class="n">plugsite</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="n">ch</span><span class="o">.</span><span class="n">cen_A</span><span class="o">.</span><span class="n">plugsites</span><span class="p">):</span>
-                <span class="n">SubElement</span><span class="p">(</span><span class="n">experiment</span><span class="p">,</span> <span class="s">&quot;trajectory&quot;</span><span class="p">,</span> <span class="n">name</span><span class="o">=</span><span class="s">&quot;plugsite&quot;</span><span class="p">,</span>
-                           <span class="n">index</span><span class="o">=</span><span class="nb">str</span><span class="p">((</span><span class="n">n</span><span class="p">,</span> <span class="n">m</span><span class="p">)),</span> <span class="n">cen_tag</span><span class="o">=</span><span class="s">&#39;A&#39;</span><span class="p">,</span>
-                           <span class="n">column</span><span class="o">=</span><span class="nb">str</span><span class="p">(</span><span class="n">col_num</span><span class="p">),</span> <span class="n">units</span><span class="o">=</span><span class="s">&#39;mu m&#39;</span><span class="p">)</span>
-                <span class="n">wavelist</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">plugsite</span><span class="o">.</span><span class="n">traj</span><span class="p">)</span>
-                <span class="n">col_num</span> <span class="o">+=</span> <span class="mi">1</span>
 
-                <span class="n">SubElement</span><span class="p">(</span><span class="n">experiment</span><span class="p">,</span> <span class="s">&quot;state&quot;</span><span class="p">,</span> <span class="n">name</span><span class="o">=</span><span class="s">&quot;plugsite&quot;</span><span class="p">,</span>
-                           <span class="n">index</span><span class="o">=</span><span class="nb">str</span><span class="p">((</span><span class="n">n</span><span class="p">,</span> <span class="n">m</span><span class="p">)),</span> <span class="n">cen_tag</span><span class="o">=</span><span class="s">&#39;A&#39;</span><span class="p">,</span>
-                           <span class="n">column</span><span class="o">=</span><span class="nb">str</span><span class="p">(</span><span class="n">col_num</span><span class="p">),</span> <span class="n">units</span><span class="o">=</span><span class="s">&#39;&#39;</span><span class="p">)</span>
-                <span class="n">wavelist</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">plugsite</span><span class="o">.</span><span class="n">state_hist</span><span class="p">)</span>
-                <span class="n">col_num</span> <span class="o">+=</span> <span class="mi">1</span>
+<span class="sd">                                          x  state_hist</span>
+<span class="sd">        t   id label side plug_id</span>
+<span class="sd">        0.0 0  kt    A    0       -0.077064          -1</span>
+<span class="sd">                          1       -0.077064          -1</span>
+<span class="sd">                          2       -0.077064          -1</span>
+<span class="sd">                          3       -0.077064          -1</span>
+<span class="sd">                     B    0        0.022936           1</span>
+<span class="sd">                          1        0.022936           1</span>
+<span class="sd">                          2        0.022936           1</span>
+<span class="sd">                          3        0.022936           1</span>
+<span class="sd">            1  kt    A    0       -0.037428          -1</span>
+<span class="sd">                          1       -0.037428          -1</span>
+<span class="sd">                          2       -0.037428          -1</span>
+<span class="sd">                          3       -0.037428          -1</span>
+<span class="sd">                     B    0        0.062572           1</span>
+<span class="sd">                          1        0.062572           0</span>
+<span class="sd">                          2        0.062572           1</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">chromosomes_dic</span> <span class="o">=</span> <span class="p">{}</span>
+        <span class="n">plugsites_dic</span> <span class="o">=</span> <span class="p">{}</span>
 
-            <span class="k">for</span> <span class="n">m</span><span class="p">,</span> <span class="n">plugsite</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="n">ch</span><span class="o">.</span><span class="n">cen_B</span><span class="o">.</span><span class="n">plugsites</span><span class="p">):</span>
+        <span class="k">for</span> <span class="n">i</span><span class="p">,</span> <span class="n">chromosome</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="n">chromosomes</span><span class="p">):</span>
+            <span class="n">ktA</span> <span class="o">=</span> <span class="n">chromosome</span><span class="o">.</span><span class="n">cen_A</span>
+            <span class="n">ktB</span> <span class="o">=</span> <span class="n">chromosome</span><span class="o">.</span><span class="n">cen_B</span>
 
-                <span class="n">SubElement</span><span class="p">(</span><span class="n">experiment</span><span class="p">,</span> <span class="s">&quot;trajectory&quot;</span><span class="p">,</span> <span class="n">name</span><span class="o">=</span><span class="s">&quot;plugsite&quot;</span><span class="p">,</span>
-                           <span class="n">index</span><span class="o">=</span><span class="nb">str</span><span class="p">((</span><span class="n">n</span><span class="p">,</span> <span class="n">m</span><span class="p">)),</span> <span class="n">cen_tag</span><span class="o">=</span><span class="s">&#39;B&#39;</span><span class="p">,</span>
-                           <span class="n">column</span><span class="o">=</span><span class="nb">str</span><span class="p">(</span><span class="n">col_num</span><span class="p">),</span> <span class="n">units</span><span class="o">=</span><span class="s">&#39;mu m&#39;</span><span class="p">)</span>
-                <span class="n">wavelist</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">plugsite</span><span class="o">.</span><span class="n">traj</span><span class="p">)</span>
-                <span class="n">col_num</span> <span class="o">+=</span> <span class="mi">1</span>
+            <span class="n">chromosomes_dic</span><span class="p">[(</span><span class="n">i</span><span class="p">,</span> <span class="s">&#39;kt&#39;</span><span class="p">,</span> <span class="s">&#39;A&#39;</span><span class="p">)]</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">(</span><span class="n">ktA</span><span class="o">.</span><span class="n">traj</span><span class="p">,</span> <span class="n">columns</span><span class="o">=</span><span class="p">[</span><span class="s">&#39;x&#39;</span><span class="p">],</span> <span class="n">index</span><span class="o">=</span><span class="n">time_index</span><span class="p">)</span>
+            <span class="n">chromosomes_dic</span><span class="p">[(</span><span class="n">i</span><span class="p">,</span> <span class="s">&#39;kt&#39;</span><span class="p">,</span> <span class="s">&#39;B&#39;</span><span class="p">)]</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">(</span><span class="n">ktB</span><span class="o">.</span><span class="n">traj</span><span class="p">,</span> <span class="n">columns</span><span class="o">=</span><span class="p">[</span><span class="s">&#39;x&#39;</span><span class="p">],</span> <span class="n">index</span><span class="o">=</span><span class="n">time_index</span><span class="p">)</span>
 
-                <span class="n">SubElement</span><span class="p">(</span><span class="n">experiment</span><span class="p">,</span> <span class="s">&quot;state&quot;</span><span class="p">,</span> <span class="n">name</span><span class="o">=</span><span class="s">&quot;plugsite&quot;</span><span class="p">,</span>
-                           <span class="n">index</span><span class="o">=</span><span class="nb">str</span><span class="p">((</span><span class="n">n</span><span class="p">,</span> <span class="n">m</span><span class="p">)),</span> <span class="n">cen_tag</span><span class="o">=</span><span class="s">&#39;B&#39;</span><span class="p">,</span>
-                           <span class="n">column</span><span class="o">=</span><span class="nb">str</span><span class="p">(</span><span class="n">col_num</span><span class="p">),</span> <span class="n">units</span><span class="o">=</span><span class="s">&#39;&#39;</span><span class="p">)</span>
-                <span class="n">wavelist</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">plugsite</span><span class="o">.</span><span class="n">state_hist</span><span class="p">)</span>
-                <span class="n">col_num</span> <span class="o">+=</span> <span class="mi">1</span>
+            <span class="k">for</span> <span class="n">j</span><span class="p">,</span> <span class="p">(</span><span class="n">psA</span><span class="p">,</span> <span class="n">psB</span><span class="p">)</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="nb">zip</span><span class="p">(</span><span class="n">ktA</span><span class="o">.</span><span class="n">plugsites</span><span class="p">,</span> <span class="n">ktB</span><span class="o">.</span><span class="n">plugsites</span><span class="p">)):</span>
+                <span class="n">psA_df</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="o">.</span><span class="n">from_dict</span><span class="p">({</span><span class="s">&#39;x&#39;</span><span class="p">:</span> <span class="n">psA</span><span class="o">.</span><span class="n">traj</span><span class="p">,</span> <span class="s">&#39;state_hist&#39;</span><span class="p">:</span> <span class="n">psA</span><span class="o">.</span><span class="n">state_hist</span><span class="p">})</span>
+                <span class="n">psA_df</span><span class="o">.</span><span class="n">index</span> <span class="o">=</span> <span class="n">time_index</span>
+                <span class="n">plugsites_dic</span><span class="p">[(</span><span class="n">i</span><span class="p">,</span> <span class="s">&#39;kt&#39;</span><span class="p">,</span> <span class="s">&#39;A&#39;</span><span class="p">,</span> <span class="n">j</span><span class="p">)]</span> <span class="o">=</span> <span class="n">psA_df</span>
 
-        <span class="c"># Observations</span>
-        <span class="n">obs_elem</span> <span class="o">=</span> <span class="n">SubElement</span><span class="p">(</span><span class="n">experiment</span><span class="p">,</span> <span class="s">&quot;observations&quot;</span><span class="p">)</span>
-        <span class="k">if</span> <span class="ow">not</span> <span class="nb">hasattr</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="s">&#39;observations&#39;</span><span class="p">):</span>
-            <span class="bp">self</span><span class="o">.</span><span class="n">evaluate</span><span class="p">()</span>
-        <span class="k">for</span> <span class="n">key</span><span class="p">,</span> <span class="n">val</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">observations</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
-            <span class="n">SubElement</span><span class="p">(</span><span class="n">obs_elem</span><span class="p">,</span> <span class="n">key</span><span class="p">)</span><span class="o">.</span><span class="n">text</span> <span class="o">=</span> <span class="nb">str</span><span class="p">(</span><span class="n">val</span><span class="p">)</span>
+                <span class="n">psB_df</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="o">.</span><span class="n">from_dict</span><span class="p">({</span><span class="s">&#39;x&#39;</span><span class="p">:</span> <span class="n">psB</span><span class="o">.</span><span class="n">traj</span><span class="p">,</span> <span class="s">&#39;state_hist&#39;</span><span class="p">:</span> <span class="n">psB</span><span class="o">.</span><span class="n">state_hist</span><span class="p">})</span>
+                <span class="n">psB_df</span><span class="o">.</span><span class="n">index</span> <span class="o">=</span> <span class="n">time_index</span>
+                <span class="n">plugsites_dic</span><span class="p">[(</span><span class="n">i</span><span class="p">,</span> <span class="s">&#39;kt&#39;</span><span class="p">,</span> <span class="s">&#39;B&#39;</span><span class="p">,</span> <span class="n">j</span><span class="p">)]</span> <span class="o">=</span> <span class="n">psB_df</span>
 
-        <span class="c"># Now we write down the whole experiment XML element</span>
-        <span class="n">indent</span><span class="p">(</span><span class="n">experiment</span><span class="p">)</span>
-        <span class="n">xmlout</span> <span class="o">+=</span> <span class="n">tostring</span><span class="p">(</span><span class="n">experiment</span><span class="p">)</span>
+        <span class="n">kts</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">concat</span><span class="p">(</span><span class="n">chromosomes_dic</span><span class="p">,</span> <span class="n">names</span><span class="o">=</span><span class="p">[</span><span class="s">&#39;id&#39;</span><span class="p">,</span> <span class="s">&#39;label&#39;</span><span class="p">,</span> <span class="s">&#39;side&#39;</span><span class="p">])</span>
+        <span class="n">kts</span> <span class="o">=</span> <span class="n">kts</span><span class="o">.</span><span class="n">reorder_levels</span><span class="p">([</span><span class="mi">3</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="mi">2</span><span class="p">])</span><span class="o">.</span><span class="n">sort</span><span class="p">()</span>
 
-        <span class="c"># And the data in the file datafname</span>
-        <span class="n">datafile</span> <span class="o">=</span> <span class="n">StringIO</span><span class="o">.</span><span class="n">StringIO</span><span class="p">()</span>
-        <span class="n">data</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">vstack</span><span class="p">(</span><span class="n">wavelist</span><span class="p">)</span><span class="o">.</span><span class="n">T</span>
-        <span class="n">np</span><span class="o">.</span><span class="n">save</span><span class="p">(</span><span class="n">datafile</span><span class="p">,</span> <span class="n">data</span><span class="p">)</span>
+        <span class="n">plug_sites</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">concat</span><span class="p">(</span><span class="n">plugsites_dic</span><span class="p">,</span> <span class="n">names</span><span class="o">=</span><span class="p">[</span><span class="s">&#39;id&#39;</span><span class="p">,</span> <span class="s">&#39;label&#39;</span><span class="p">,</span> <span class="s">&#39;side&#39;</span><span class="p">,</span> <span class="s">&#39;plug_id&#39;</span><span class="p">])</span>
+        <span class="n">plug_sites</span> <span class="o">=</span> <span class="n">plug_sites</span><span class="o">.</span><span class="n">reorder_levels</span><span class="p">([</span><span class="mi">4</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="mi">2</span><span class="p">,</span> <span class="mi">3</span><span class="p">])</span><span class="o">.</span><span class="n">sort</span><span class="p">()</span>
+        <span class="n">plug_sites</span> <span class="o">=</span> <span class="n">plug_sites</span><span class="o">.</span><span class="n">reindex_axis</span><span class="p">([</span><span class="s">&#39;x&#39;</span><span class="p">,</span> <span class="s">&#39;state_hist&#39;</span><span class="p">],</span> <span class="n">axis</span><span class="o">=</span><span class="mi">1</span><span class="p">)</span>
 
-        <span class="c"># Pack xmlfile and datafile in a zip archive</span>
-        <span class="n">zipf</span> <span class="o">=</span> <span class="n">zipfile</span><span class="o">.</span><span class="n">ZipFile</span><span class="p">(</span><span class="n">simufname</span><span class="p">,</span> <span class="s">&quot;w&quot;</span><span class="p">,</span>
-            <span class="n">compression</span><span class="o">=</span><span class="n">zipfile</span><span class="o">.</span><span class="n">ZIP_DEFLATED</span><span class="p">)</span>
-        <span class="n">zipf</span><span class="o">.</span><span class="n">writestr</span><span class="p">(</span><span class="s">&quot;results.xml&quot;</span><span class="p">,</span> <span class="n">xmlout</span><span class="p">)</span>
-        <span class="n">zipf</span><span class="o">.</span><span class="n">writestr</span><span class="p">(</span><span class="s">&quot;data.npy&quot;</span><span class="p">,</span> <span class="n">datafile</span><span class="o">.</span><span class="n">getvalue</span><span class="p">())</span>
-        <span class="n">zipf</span><span class="o">.</span><span class="n">close</span><span class="p">()</span>
+        <span class="c"># Get ParamTree as Dataframe</span>
+        <span class="n">params</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">paramtree</span><span class="o">.</span><span class="n">to_df</span><span class="p">()</span>
+        <span class="n">measures</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">measuretree</span><span class="o">.</span><span class="n">to_df</span><span class="p">()</span>
 
-        <span class="n">datafile</span><span class="o">.</span><span class="n">close</span><span class="p">()</span>
+        <span class="n">store</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">HDFStore</span><span class="p">(</span><span class="n">simufname</span><span class="p">)</span>
+        <span class="k">for</span> <span class="n">dfname</span> <span class="ow">in</span> <span class="n">df_to_save</span><span class="p">:</span>
+            <span class="n">store</span><span class="p">[</span><span class="n">dfname</span><span class="p">]</span> <span class="o">=</span> <span class="nb">locals</span><span class="p">()[</span><span class="n">dfname</span><span class="p">]</span>
+        <span class="n">store</span><span class="o">.</span><span class="n">close</span><span class="p">()</span>
 
         <span class="k">if</span> <span class="n">verbose</span><span class="p">:</span>
             <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s">&quot;Simulation saved to file </span><span class="si">%s</span><span class="s"> &quot;</span> <span class="o">%</span> <span class="n">simufname</span><span class="p">)</span>
 </div>
-<div class="viewcode-block" id="SimuIO.read"><a class="viewcode-back" href="../../../generated/kt_simul.io.simuio.html#kt_simul.io.simuio.SimuIO.read">[docs]</a>    <span class="k">def</span> <span class="nf">read</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">simufname</span><span class="o">=</span><span class="s">&quot;results.zip&quot;</span><span class="p">,</span> <span class="n">verbose</span><span class="o">=</span><span class="bp">False</span><span class="p">):</span>
+<div class="viewcode-block" id="SimuIO.read"><a class="viewcode-back" href="../../../generated/kt_simul.io.simuio.html#kt_simul.io.simuio.SimuIO.read">[docs]</a>    <span class="k">def</span> <span class="nf">read</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">simufname</span><span class="p">,</span> <span class="n">verbose</span><span class="o">=</span><span class="bp">False</span><span class="p">):</span>
         <span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">        Creates a simul_spindle.Metaphase from a results.zip file.</span>
 
 <span class="sd">        Parameters</span>
 <span class="sd">        ----------</span>
 <span class="sd">        simufname : string, optional</span>
-<span class="sd">            The .zip file where results from the existing simulation are (zip which contains xml and npy)</span>
+<span class="sd">            The .zip file where results from the existing simulation are</span>
+<span class="sd">            (zip which contains xml and npy)</span>
 
 <span class="sd">        verbose : bool</span>
 <span class="sd">            Set Metaphase verbose</span>
@@ -249,71 +241,77 @@
 
 <span class="sd">        &quot;&quot;&quot;</span>
 
-        <span class="c"># Unzip results.xml and data.npy and put it in</span>
-        <span class="c"># tempfile</span>
-        <span class="k">try</span><span class="p">:</span>
-            <span class="n">zipf</span> <span class="o">=</span> <span class="n">zipfile</span><span class="o">.</span><span class="n">ZipFile</span><span class="p">(</span><span class="n">simufname</span><span class="p">,</span> <span class="s">&quot;r&quot;</span><span class="p">)</span>
-        <span class="k">except</span><span class="p">:</span>
-            <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s">&quot;</span><span class="si">%s</span><span class="s"> does not appear to be a Zipfile&quot;</span> <span class="o">%</span> <span class="n">simufname</span><span class="p">)</span>
-            <span class="k">return</span> <span class="bp">False</span>
+        <span class="n">store</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">HDFStore</span><span class="p">(</span><span class="n">simufname</span><span class="p">)</span>
 
-        <span class="c"># Test if simu results file are in the archive</span>
-        <span class="k">if</span> <span class="s">&quot;results.xml&quot;</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">zipf</span><span class="o">.</span><span class="n">namelist</span><span class="p">()</span> <span class="ow">or</span> <span class="s">&quot;data.npy&quot;</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">zipf</span><span class="o">.</span><span class="n">namelist</span><span class="p">():</span>
-            <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s">&quot;</span><span class="si">%s</span><span class="s"> does not contain results.xml and data.npy&quot;</span> <span class="o">%</span> <span class="n">simufname</span><span class="p">)</span>
-            <span class="k">return</span> <span class="bp">False</span>
-
-        <span class="n">xmltemp</span> <span class="o">=</span> <span class="n">StringIO</span><span class="o">.</span><span class="n">StringIO</span><span class="p">(</span><span class="n">zipf</span><span class="o">.</span><span class="n">read</span><span class="p">(</span><span class="s">&quot;results.xml&quot;</span><span class="p">))</span>
-        <span class="n">datatemp</span> <span class="o">=</span> <span class="n">StringIO</span><span class="o">.</span><span class="n">StringIO</span><span class="p">(</span><span class="n">zipf</span><span class="o">.</span><span class="n">read</span><span class="p">(</span><span class="s">&quot;data.npy&quot;</span><span class="p">))</span>
-
-        <span class="n">restree</span> <span class="o">=</span> <span class="n">ResultTree</span><span class="p">(</span><span class="n">xmltemp</span><span class="p">,</span> <span class="n">datatemp</span><span class="p">)</span>
-
-        <span class="n">param_root</span> <span class="o">=</span> <span class="n">restree</span><span class="o">.</span><span class="n">root</span><span class="o">.</span><span class="n">find</span><span class="p">(</span><span class="s">&#39;parameters&#39;</span><span class="p">)</span>
+        <span class="n">param_root</span> <span class="o">=</span> <span class="n">build_tree</span><span class="p">(</span><span class="n">store</span><span class="p">[</span><span class="s">&#39;params&#39;</span><span class="p">])</span>
         <span class="n">paramtree</span> <span class="o">=</span> <span class="n">ParamTree</span><span class="p">(</span><span class="n">root</span><span class="o">=</span><span class="n">param_root</span><span class="p">)</span>
         <span class="n">params</span> <span class="o">=</span> <span class="n">paramtree</span><span class="o">.</span><span class="n">relative_dic</span>
-        <span class="n">measure_root</span> <span class="o">=</span> <span class="n">restree</span><span class="o">.</span><span class="n">root</span><span class="o">.</span><span class="n">find</span><span class="p">(</span><span class="s">&#39;measures&#39;</span><span class="p">)</span>
+
+        <span class="n">measure_root</span> <span class="o">=</span> <span class="n">build_tree</span><span class="p">(</span><span class="n">store</span><span class="p">[</span><span class="s">&#39;measures&#39;</span><span class="p">])</span>
         <span class="n">measuretree</span> <span class="o">=</span> <span class="n">ParamTree</span><span class="p">(</span><span class="n">root</span><span class="o">=</span><span class="n">measure_root</span><span class="p">,</span>
                                 <span class="n">adimentionalized</span><span class="o">=</span><span class="bp">False</span><span class="p">)</span>
 
-        <span class="n">metaphase</span> <span class="o">=</span> <span class="n">Metaphase</span><span class="p">(</span><span class="n">paramtree</span><span class="o">=</span><span class="n">paramtree</span><span class="p">,</span>
-                              <span class="n">measuretree</span><span class="o">=</span><span class="n">measuretree</span><span class="p">,</span>
-                              <span class="n">verbose</span><span class="o">=</span><span class="n">verbose</span><span class="p">)</span>
-
-        <span class="n">traj_matrix</span> <span class="o">=</span> <span class="n">restree</span><span class="o">.</span><span class="n">get_all_trajs</span><span class="p">()</span>
-        <span class="n">correct_matrix</span> <span class="o">=</span> <span class="n">restree</span><span class="o">.</span><span class="n">get_all_correct</span><span class="p">()</span>
-        <span class="n">erroneous_matrix</span> <span class="o">=</span> <span class="n">restree</span><span class="o">.</span><span class="n">get_all_erroneous</span><span class="p">()</span>
-        <span class="n">state_hist_matrix</span> <span class="o">=</span> <span class="n">restree</span><span class="o">.</span><span class="n">get_all_plug_state</span><span class="p">()</span>
+        <span class="n">meta</span> <span class="o">=</span> <span class="n">Metaphase</span><span class="p">(</span><span class="n">paramtree</span><span class="o">=</span><span class="n">paramtree</span><span class="p">,</span> <span class="n">measuretree</span><span class="o">=</span><span class="n">measuretree</span><span class="p">,</span> <span class="n">verbose</span><span class="o">=</span><span class="bp">False</span><span class="p">)</span>
         <span class="n">KD</span> <span class="o">=</span> <span class="n">KinetoDynamics</span><span class="p">(</span><span class="n">params</span><span class="p">)</span>
-        <span class="n">KD</span><span class="o">.</span><span class="n">spbR</span><span class="o">.</span><span class="n">traj</span> <span class="o">=</span> <span class="n">traj_matrix</span><span class="p">[:,</span> <span class="mi">0</span><span class="p">]</span>
-        <span class="n">KD</span><span class="o">.</span><span class="n">spbL</span><span class="o">.</span><span class="n">traj</span> <span class="o">=</span> <span class="n">traj_matrix</span><span class="p">[:,</span> <span class="mi">1</span><span class="p">]</span>
-        <span class="n">col_num</span> <span class="o">=</span> <span class="mi">2</span>
-        <span class="n">state_num</span> <span class="o">=</span> <span class="mi">0</span>
-        <span class="k">for</span> <span class="n">n</span><span class="p">,</span> <span class="n">ch</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="n">KD</span><span class="o">.</span><span class="n">chromosomes</span><span class="p">):</span>
-            <span class="n">ch</span><span class="o">.</span><span class="n">cen_A</span><span class="o">.</span><span class="n">traj</span> <span class="o">=</span> <span class="n">traj_matrix</span><span class="p">[:,</span> <span class="n">col_num</span><span class="p">]</span>
-            <span class="n">ch</span><span class="o">.</span><span class="n">cen_A</span><span class="o">.</span><span class="n">pos</span> <span class="o">=</span> <span class="n">ch</span><span class="o">.</span><span class="n">cen_A</span><span class="o">.</span><span class="n">pos</span>
-            <span class="n">col_num</span> <span class="o">+=</span> <span class="mi">1</span>
-            <span class="n">ch</span><span class="o">.</span><span class="n">cen_B</span><span class="o">.</span><span class="n">traj</span> <span class="o">=</span> <span class="n">traj_matrix</span><span class="p">[:,</span> <span class="n">col_num</span><span class="p">]</span>
-            <span class="n">ch</span><span class="o">.</span><span class="n">cen_B</span><span class="o">.</span><span class="n">pos</span> <span class="o">=</span> <span class="n">ch</span><span class="o">.</span><span class="n">cen_B</span><span class="o">.</span><span class="n">pos</span>
-            <span class="n">col_num</span> <span class="o">+=</span> <span class="mi">1</span>
-            <span class="n">ch</span><span class="o">.</span><span class="n">erroneous_history</span> <span class="o">=</span> <span class="p">(</span><span class="n">erroneous_matrix</span><span class="p">[:,</span> <span class="n">n</span> <span class="o">*</span> <span class="mi">2</span><span class="p">:</span> <span class="n">n</span> <span class="o">*</span> <span class="mi">2</span> <span class="o">+</span> <span class="mi">2</span><span class="p">])</span>
-            <span class="n">ch</span><span class="o">.</span><span class="n">correct_history</span> <span class="o">=</span> <span class="p">(</span><span class="n">correct_matrix</span><span class="p">[:,</span> <span class="n">n</span> <span class="o">*</span> <span class="mi">2</span><span class="p">:</span> <span class="n">n</span> <span class="o">*</span> <span class="mi">2</span> <span class="o">+</span> <span class="mi">2</span><span class="p">])</span>
-            <span class="k">for</span> <span class="n">plugsite</span> <span class="ow">in</span> <span class="n">ch</span><span class="o">.</span><span class="n">cen_A</span><span class="o">.</span><span class="n">plugsites</span><span class="p">:</span>
-                <span class="n">plugsite</span><span class="o">.</span><span class="n">traj</span> <span class="o">=</span> <span class="n">traj_matrix</span><span class="p">[:,</span> <span class="n">col_num</span><span class="p">]</span>
-                <span class="n">col_num</span> <span class="o">+=</span> <span class="mi">1</span>
-                <span class="n">plugsite</span><span class="o">.</span><span class="n">state_hist</span> <span class="o">=</span> <span class="n">state_hist_matrix</span><span class="p">[:,</span> <span class="n">state_num</span><span class="p">]</span>
+
+        <span class="n">spbs</span> <span class="o">=</span> <span class="n">store</span><span class="p">[</span><span class="s">&#39;spbs&#39;</span><span class="p">]</span>
+        <span class="n">KD</span><span class="o">.</span><span class="n">spbL</span><span class="o">.</span><span class="n">traj</span> <span class="o">=</span> <span class="n">spbs</span><span class="o">.</span><span class="n">xs</span><span class="p">(</span><span class="s">&#39;A&#39;</span><span class="p">,</span> <span class="n">level</span><span class="o">=</span><span class="s">&#39;side&#39;</span><span class="p">)</span><span class="o">.</span><span class="n">values</span><span class="o">.</span><span class="n">T</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
+        <span class="n">KD</span><span class="o">.</span><span class="n">spbR</span><span class="o">.</span><span class="n">traj</span> <span class="o">=</span> <span class="n">spbs</span><span class="o">.</span><span class="n">xs</span><span class="p">(</span><span class="s">&#39;B&#39;</span><span class="p">,</span> <span class="n">level</span><span class="o">=</span><span class="s">&#39;side&#39;</span><span class="p">)</span><span class="o">.</span><span class="n">values</span><span class="o">.</span><span class="n">T</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
+
+        <span class="n">kts</span> <span class="o">=</span> <span class="n">store</span><span class="p">[</span><span class="s">&#39;kts&#39;</span><span class="p">]</span>
+        <span class="n">plug_sites</span> <span class="o">=</span> <span class="n">store</span><span class="p">[</span><span class="s">&#39;plug_sites&#39;</span><span class="p">]</span>
+        <span class="n">store</span><span class="o">.</span><span class="n">close</span><span class="p">()</span>
+
+        <span class="k">for</span> <span class="n">ch</span><span class="p">,</span> <span class="p">(</span><span class="n">ch_id</span><span class="p">,</span> <span class="n">ch_df</span><span class="p">)</span> <span class="ow">in</span> <span class="nb">zip</span><span class="p">(</span><span class="n">KD</span><span class="o">.</span><span class="n">chromosomes</span><span class="p">,</span> <span class="n">kts</span><span class="o">.</span><span class="n">groupby</span><span class="p">(</span><span class="n">level</span><span class="o">=</span><span class="s">&quot;id&quot;</span><span class="p">)):</span>
+            <span class="n">ch</span><span class="o">.</span><span class="n">cen_A</span><span class="o">.</span><span class="n">traj</span> <span class="o">=</span> <span class="n">ch_df</span><span class="o">.</span><span class="n">xs</span><span class="p">(</span><span class="s">&#39;A&#39;</span><span class="p">,</span> <span class="n">level</span><span class="o">=</span><span class="s">&#39;side&#39;</span><span class="p">)[</span><span class="s">&#39;x&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">values</span><span class="o">.</span><span class="n">T</span>
+            <span class="n">ch</span><span class="o">.</span><span class="n">cen_B</span><span class="o">.</span><span class="n">traj</span> <span class="o">=</span> <span class="n">ch_df</span><span class="o">.</span><span class="n">xs</span><span class="p">(</span><span class="s">&#39;B&#39;</span><span class="p">,</span> <span class="n">level</span><span class="o">=</span><span class="s">&#39;side&#39;</span><span class="p">)[</span><span class="s">&#39;x&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">values</span><span class="o">.</span><span class="n">T</span>
+
+            <span class="k">for</span> <span class="n">i</span><span class="p">,</span> <span class="n">plugsite</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="n">ch</span><span class="o">.</span><span class="n">cen_A</span><span class="o">.</span><span class="n">plugsites</span><span class="p">):</span>
+                <span class="n">ps</span> <span class="o">=</span> <span class="n">plug_sites</span><span class="o">.</span><span class="n">xs</span><span class="p">((</span><span class="n">ch_id</span><span class="p">,</span> <span class="s">&#39;A&#39;</span><span class="p">,</span> <span class="n">i</span><span class="p">),</span> <span class="n">level</span><span class="o">=</span><span class="p">[</span><span class="s">&#39;id&#39;</span><span class="p">,</span> <span class="s">&#39;side&#39;</span><span class="p">,</span> <span class="s">&#39;plug_id&#39;</span><span class="p">])</span>
+                <span class="n">plugsite</span><span class="o">.</span><span class="n">traj</span> <span class="o">=</span> <span class="n">ps</span><span class="p">[</span><span class="s">&#39;x&#39;</span><span class="p">]</span>
+                <span class="n">plugsite</span><span class="o">.</span><span class="n">state_hist</span> <span class="o">=</span> <span class="n">ps</span><span class="p">[</span><span class="s">&#39;state_hist&#39;</span><span class="p">]</span>
                 <span class="n">plugsite</span><span class="o">.</span><span class="n">plug_state</span> <span class="o">=</span> <span class="n">plugsite</span><span class="o">.</span><span class="n">state_hist</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span>
-                <span class="n">state_num</span> <span class="o">+=</span> <span class="mi">1</span>
-            <span class="k">for</span> <span class="n">plugsite</span> <span class="ow">in</span> <span class="n">ch</span><span class="o">.</span><span class="n">cen_B</span><span class="o">.</span><span class="n">plugsites</span><span class="p">:</span>
-                <span class="n">plugsite</span><span class="o">.</span><span class="n">traj</span> <span class="o">=</span> <span class="n">traj_matrix</span><span class="p">[:,</span> <span class="n">col_num</span><span class="p">]</span>
-                <span class="n">col_num</span> <span class="o">+=</span> <span class="mi">1</span>
-                <span class="n">plugsite</span><span class="o">.</span><span class="n">state_hist</span> <span class="o">=</span> <span class="n">state_hist_matrix</span><span class="p">[:,</span> <span class="n">state_num</span><span class="p">]</span>
+
+            <span class="k">for</span> <span class="n">i</span><span class="p">,</span> <span class="n">plugsite</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="n">ch</span><span class="o">.</span><span class="n">cen_B</span><span class="o">.</span><span class="n">plugsites</span><span class="p">):</span>
+                <span class="n">ps</span> <span class="o">=</span> <span class="n">plug_sites</span><span class="o">.</span><span class="n">xs</span><span class="p">((</span><span class="n">ch_id</span><span class="p">,</span> <span class="s">&#39;B&#39;</span><span class="p">,</span> <span class="n">i</span><span class="p">),</span> <span class="n">level</span><span class="o">=</span><span class="p">[</span><span class="s">&#39;id&#39;</span><span class="p">,</span> <span class="s">&#39;side&#39;</span><span class="p">,</span> <span class="s">&#39;plug_id&#39;</span><span class="p">])</span>
+                <span class="n">plugsite</span><span class="o">.</span><span class="n">traj</span> <span class="o">=</span> <span class="n">ps</span><span class="p">[</span><span class="s">&#39;x&#39;</span><span class="p">]</span>
+                <span class="n">plugsite</span><span class="o">.</span><span class="n">state_hist</span> <span class="o">=</span> <span class="n">ps</span><span class="p">[</span><span class="s">&#39;state_hist&#39;</span><span class="p">]</span>
                 <span class="n">plugsite</span><span class="o">.</span><span class="n">plug_state</span> <span class="o">=</span> <span class="n">plugsite</span><span class="o">.</span><span class="n">state_hist</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span>
-                <span class="n">state_num</span> <span class="o">+=</span> <span class="mi">1</span>
 
-        <span class="n">metaphase</span><span class="o">.</span><span class="n">KD</span> <span class="o">=</span> <span class="n">KD</span>
+            <span class="n">ch</span><span class="o">.</span><span class="n">calc_erroneous_history</span><span class="p">()</span>
+            <span class="n">ch</span><span class="o">.</span><span class="n">calc_correct_history</span><span class="p">()</span>
 
-        <span class="n">metaphase</span><span class="o">.</span><span class="n">KD</span><span class="o">.</span><span class="n">simulation_done</span> <span class="o">=</span> <span class="bp">True</span>
+        <span class="n">meta</span><span class="o">.</span><span class="n">KD</span> <span class="o">=</span> <span class="n">KD</span>
+        <span class="n">meta</span><span class="o">.</span><span class="n">KD</span><span class="o">.</span><span class="n">simulation_done</span> <span class="o">=</span> <span class="bp">True</span>
 
-        <span class="k">return</span> <span class="n">metaphase</span></div></div>
+        <span class="k">return</span> <span class="n">meta</span>
+</div></div>
+<div class="viewcode-block" id="build_tree"><a class="viewcode-back" href="../../../generated/kt_simul.io.simuio.html#kt_simul.io.simuio.build_tree">[docs]</a><span class="k">def</span> <span class="nf">build_tree</span><span class="p">(</span><span class="n">df</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Build :class:`ElementTree` instance from :class:`pandas.DataFrame`.</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+
+<span class="sd">    df : :class:`pandas.DataFrame`</span>
+<span class="sd">        df should come from ParamTree.to_df() method.</span>
+
+<span class="sd">    Returns</span>
+<span class="sd">    -------</span>
+<span class="sd">    :class:`ElementTree`</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="n">root</span> <span class="o">=</span> <span class="n">ET</span><span class="o">.</span><span class="n">Element</span><span class="p">(</span><span class="s">&quot;parameters&quot;</span><span class="p">)</span>
+    <span class="n">tags</span> <span class="o">=</span> <span class="p">[</span><span class="s">&#39;unit&#39;</span><span class="p">,</span> <span class="s">&#39;description&#39;</span><span class="p">]</span>
+    <span class="k">for</span> <span class="n">i</span><span class="p">,</span> <span class="n">p</span> <span class="ow">in</span> <span class="n">df</span><span class="o">.</span><span class="n">iterrows</span><span class="p">():</span>
+        <span class="n">et</span> <span class="o">=</span> <span class="n">ET</span><span class="o">.</span><span class="n">SubElement</span><span class="p">(</span><span class="n">root</span><span class="p">,</span> <span class="s">&quot;param&quot;</span><span class="p">)</span>
+        <span class="k">for</span> <span class="n">key</span><span class="p">,</span> <span class="n">value</span> <span class="ow">in</span> <span class="n">p</span><span class="o">.</span><span class="n">iteritems</span><span class="p">():</span>
+            <span class="k">if</span> <span class="n">key</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">tags</span><span class="p">:</span>
+                <span class="n">et</span><span class="o">.</span><span class="n">set</span><span class="p">(</span><span class="n">key</span><span class="p">,</span> <span class="n">value</span><span class="p">)</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="n">subet</span> <span class="o">=</span> <span class="n">ET</span><span class="o">.</span><span class="n">SubElement</span><span class="p">(</span><span class="n">et</span><span class="p">,</span> <span class="n">key</span><span class="p">)</span>
+                <span class="n">subet</span><span class="o">.</span><span class="n">text</span> <span class="o">=</span> <span class="n">value</span>
+    <span class="k">return</span> <span class="n">root</span></div>
 </pre></div>
 
           </div>
